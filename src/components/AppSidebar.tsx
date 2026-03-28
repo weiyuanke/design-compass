@@ -54,7 +54,7 @@ export function AppSidebar() {
           </div>
           {!collapsed && (
             <span className="text-lg font-semibold text-gradient-primary tracking-tight">
-              Agent 平台
+              Lingjun Agent Hub
             </span>
           )}
         </div>
