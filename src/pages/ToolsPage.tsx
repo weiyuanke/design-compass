@@ -40,7 +40,7 @@ const ToolsPage = () => {
   return (
     <div className="p-6 lg:p-8 max-w-5xl mx-auto space-y-6">
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
-        <h1 className="text-2xl font-bold text-foreground">工具 Agent</h1>
+        <h1 className="text-2xl font-bold text-foreground">平台 Agent</h1>
         <p className="text-sm text-muted-foreground mt-1">
           平台内置的公共 Agent，开箱即用，直接对话交互
         </p>
@@ -51,7 +51,7 @@ const ToolsPage = () => {
         <Input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="搜索工具 Agent..."
+          placeholder="搜索平台 Agent..."
           className="pl-10 bg-secondary/50 border-border/50 h-10"
         />
       </div>
