@@ -4,7 +4,7 @@ import {
   LayoutGrid,
   Bot,
   PlusCircle,
-  Settings,
+  Activity,
   Activity,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
