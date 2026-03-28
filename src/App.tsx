@@ -8,6 +8,7 @@ import HomePage from "./pages/HomePage";
 import ChatPage from "./pages/ChatPage";
 import TemplatesPage from "./pages/TemplatesPage";
 import MyAgentsPage from "./pages/MyAgentsPage";
+import ToolsPage from "./pages/ToolsPage";
 import CreateAgentPage from "./pages/CreateAgentPage";
 import SettingsPage from "./pages/SettingsPage";
 import NotFound from "./pages/NotFound";
