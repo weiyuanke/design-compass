@@ -33,7 +33,6 @@ const mainNav = [
 
 const adminNav = [
   { title: "监控概览", url: "/monitor", icon: Activity },
-  { title: "系统设置", url: "/settings", icon: Settings },
 ];
 
 export function AppSidebar() {

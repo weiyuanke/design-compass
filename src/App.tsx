@@ -27,6 +27,7 @@ const App = () => (
             <Route path="/templates" element={<TemplatesPage />} />
             <Route path="/my-agents" element={<MyAgentsPage />} />
             <Route path="/create" element={<CreateAgentPage />} />
+            <Route path="/settings" element={<SettingsPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AppLayout>
