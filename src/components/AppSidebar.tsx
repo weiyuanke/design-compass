@@ -112,17 +112,20 @@ export function AppSidebar() {
       </SidebarContent>
 
       <SidebarFooter className="p-4">
-        {!collapsed && (
-          <div className="flex items-center gap-3 px-2">
-            <div className="h-8 w-8 rounded-full bg-accent/20 flex items-center justify-center text-sm font-medium text-accent">
-              张
-            </div>
+        <NavLink
+          to="/settings"
+          className="flex items-center gap-3 px-2 rounded-lg hover:bg-secondary/50 transition-colors py-2"
+          activeClassName="bg-primary/10"
+        >
+          <div className="h-8 w-8 rounded-full bg-accent/20 flex items-center justify-center text-sm font-medium text-accent flex-shrink-0">
+            张
+          </div>
+          {!collapsed && (
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-foreground truncate">张三</p>
-              <p className="text-xs text-muted-foreground truncate">开发者</p>
             </div>
-          </div>
-        )}
+          )}
+        </NavLink>
       </SidebarFooter>
     </Sidebar>
   );
