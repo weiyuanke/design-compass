@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
+import { myAgents as initialAgents } from "@/data/agents";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,27 +13,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-interface MyAgent {
-  id: string;
-  name: string;
-  emoji: string;
-  template: string;
-  status: "active" | "inactive";
-  calls: number;
-  created: string;
-}
-
-const myAgents: MyAgent[] = [
-  { id: "1", name: "我的爬虫助手", emoji: "🕷️", template: "OpenCrawl", status: "active", calls: 456, created: "2026-03-15" },
-  { id: "2", name: "客服机器人", emoji: "💬", template: "Chatbot", status: "active", calls: 1289, created: "2026-03-10" },
-  { id: "3", name: "代码审查助手", emoji: "💻", template: "Coding Agent", status: "inactive", calls: 87, created: "2026-03-20" },
-  { id: "4", name: "合同摘要生成器", emoji: "📝", template: "文档助手", status: "active", calls: 234, created: "2026-03-22" },
-  { id: "5", name: "数据采集 Bot", emoji: "🕷️", template: "OpenCrawl", status: "active", calls: 678, created: "2026-03-25" },
-];
-
 const MyAgentsPage = () => {
   const navigate = useNavigate();
-  const [agents, setAgents] = useState(myAgents);
+  const [agents, setAgents] = useState(initialAgents);
 
   const toggleStatus = (id: string) => {
     setAgents((prev) =>
