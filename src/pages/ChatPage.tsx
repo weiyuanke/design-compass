@@ -119,7 +119,7 @@ const ChatPage = () => {
             >
               <div className={`h-8 w-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
                 msg.role === "user"
-                  ? "bg-accent/20 text-accent"
+                  ? "bg-accent/15 text-accent"
                   : "bg-primary/10 text-primary"
               }`}>
                 {msg.role === "user" ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
