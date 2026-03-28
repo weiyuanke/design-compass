@@ -9,6 +9,7 @@ import ChatPage from "./pages/ChatPage";
 import TemplatesPage from "./pages/TemplatesPage";
 import MyAgentsPage from "./pages/MyAgentsPage";
 import CreateAgentPage from "./pages/CreateAgentPage";
+import SettingsPage from "./pages/SettingsPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -26,6 +27,7 @@ const App = () => (
             <Route path="/templates" element={<TemplatesPage />} />
             <Route path="/my-agents" element={<MyAgentsPage />} />
             <Route path="/create" element={<CreateAgentPage />} />
+            <Route path="/settings" element={<SettingsPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AppLayout>
