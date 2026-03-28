@@ -25,9 +25,9 @@ import {
 const mainNav = [
   { title: "首页", url: "/", icon: Home },
   { title: "对话", url: "/chat", icon: MessageSquare },
+  { title: "工具 Agent", url: "/tools", icon: Wrench },
   { title: "Agent 模版", url: "/templates", icon: LayoutGrid },
   { title: "我的 Agent", url: "/my-agents", icon: Bot },
-  { title: "创建 Agent", url: "/create", icon: PlusCircle },
 ];
 
 const adminNav = [
