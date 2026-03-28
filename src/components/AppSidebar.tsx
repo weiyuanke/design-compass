@@ -3,7 +3,7 @@ import {
   MessageSquare,
   LayoutGrid,
   Bot,
-  PlusCircle,
+  Wrench,
   Activity,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
