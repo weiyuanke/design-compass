@@ -51,7 +51,7 @@ const ToolsPage = () => {
         <Input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="搜索工具 Agent..."
+          placeholder="搜索平台 Agent..."
           className="pl-10 bg-secondary/50 border-border/50 h-10"
         />
       </div>
