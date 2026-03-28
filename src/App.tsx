@@ -8,6 +8,7 @@ import HomePage from "./pages/HomePage";
 import ChatPage from "./pages/ChatPage";
 import TemplatesPage from "./pages/TemplatesPage";
 import MyAgentsPage from "./pages/MyAgentsPage";
+import ToolsPage from "./pages/ToolsPage";
 import CreateAgentPage from "./pages/CreateAgentPage";
 import SettingsPage from "./pages/SettingsPage";
 import NotFound from "./pages/NotFound";
@@ -25,6 +26,7 @@ const App = () => (
             <Route path="/" element={<HomePage />} />
             <Route path="/chat" element={<ChatPage />} />
             <Route path="/templates" element={<TemplatesPage />} />
+            <Route path="/tools" element={<ToolsPage />} />
             <Route path="/my-agents" element={<MyAgentsPage />} />
             <Route path="/create" element={<CreateAgentPage />} />
             <Route path="/settings" element={<SettingsPage />} />
