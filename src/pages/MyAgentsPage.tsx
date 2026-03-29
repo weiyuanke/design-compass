@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { 
+import {
   Search, MoreHorizontal, Play, Pause, Trash2, Settings, MessageSquare, Plus,
   Server, Shield, HardDrive, ExternalLink, Terminal, Power
 } from "lucide-react";
@@ -40,8 +40,8 @@ const MyAgentsPage = () => {
   const toggleVM = (id: string) => {
     setAgents((prev) =>
       prev.map((a) =>
-        a.id === id ? { 
-          ...a, 
+        a.id === id ? {
+          ...a,
           vmStatus: a.vmStatus === "running" ? "stopped" : "running",
           status: a.vmStatus === "running" ? "inactive" : "active"
         } : a
@@ -56,14 +56,14 @@ const MyAgentsPage = () => {
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
             <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-bold">我的 Agent</h1>
+              <h1 className="text-2xl font-bold">自托管 Agent</h1>
               <Badge variant="outline" className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20">
                 <Shield className="h-3 w-3 mr-1" />
-                自托管
+                独立部署
               </Badge>
             </div>
             <p className="text-sm text-muted-foreground mt-2">
-              每个 Agent 独立部署在专属虚拟机，数据完全隔离，你拥有绝对控制权
+              每个 Agent 独立部署在专属虚拟机，数据完全隔离，需通过外部工作台进行交互
             </p>
           </div>
           <Button onClick={() => navigate("/create")} className="bg-primary text-primary-foreground hover:bg-primary/90">
@@ -107,7 +107,7 @@ const MyAgentsPage = () => {
       {/* Search */}
       <div className="relative max-w-md">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input placeholder="搜索我的 Agent..." className="pl-10 bg-secondary/50 border-border/50 h-10" />
+        <Input placeholder="搜索自托管 Agent..." className="pl-10 bg-secondary/50 border-border/50 h-10" />
       </div>
 
       {/* Agent Grid */}
@@ -122,13 +122,13 @@ const MyAgentsPage = () => {
             <Card className="group hover:shadow-xl transition-all duration-300 border-border/50 hover:border-primary/30 bg-card overflow-hidden">
               {/* VM Status Bar */}
               <div className={`h-1 w-full ${
-                agent.vmStatus === "running" 
-                  ? "bg-gradient-to-r from-emerald-500 to-emerald-400" 
+                agent.vmStatus === "running"
+                  ? "bg-gradient-to-r from-emerald-500 to-emerald-400"
                   : agent.vmStatus === "stopped"
                   ? "bg-gradient-to-r from-muted to-muted"
                   : "bg-gradient-to-r from-amber-500 to-amber-400"
               }`} />
-              
+
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
@@ -139,8 +139,8 @@ const MyAgentsPage = () => {
                       <CardTitle className="text-lg font-semibold text-foreground">{agent.name}</CardTitle>
                       <div className="flex items-center gap-2 mt-1">
                         <Badge variant={agent.status === "active" ? "default" : "secondary"} className={`text-xs h-5 ${
-                          agent.status === "active" 
-                            ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/20" 
+                          agent.status === "active"
+                            ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/20"
                             : "bg-muted text-muted-foreground"
                         }`}>
                           {agent.status === "active" ? "运行中" : "已停止"}
@@ -153,7 +153,7 @@ const MyAgentsPage = () => {
                   </div>
                 </div>
               </CardHeader>
-              
+
               <CardContent className="pb-3 space-y-3">
                 {/* VM Info */}
                 <div className="p-3 rounded-lg bg-secondary/30 border border-border/50 space-y-2">
@@ -207,17 +207,29 @@ const MyAgentsPage = () => {
                   </div>
                 </div>
               </CardContent>
-              
+
               <CardFooter className="pt-0 flex items-center justify-between gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="flex-1 text-xs h-8 border-border/50 hover:bg-primary hover:text-primary-foreground hover:border-primary"
-                  onClick={() => navigate(`/chat?agent=${agent.id}`)}
-                >
-                  <MessageSquare className="h-3.5 w-3.5 mr-1" />
-                  对话
-                </Button>
+                {agent.requiresExternalInterface && agent.externalUrl ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 text-xs h-8 border-border/50 hover:bg-primary hover:text-primary-foreground hover:border-primary"
+                    onClick={() => window.open(agent.externalUrl, '_blank')}
+                  >
+                    <ExternalLink className="h-3.5 w-3.5 mr-1" />
+                    访问工作台
+                  </Button>
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 text-xs h-8 border-border/50 hover:bg-primary hover:text-primary-foreground hover:border-primary"
+                    onClick={() => navigate(`/chat?agent=${agent.id}`)}
+                  >
+                    <MessageSquare className="h-3.5 w-3.5 mr-1" />
+                    对话
+                  </Button>
+                )}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
@@ -240,7 +252,10 @@ const MyAgentsPage = () => {
                     <DropdownMenuItem onClick={() => navigate(`/agent/${agent.id}/settings`)} className="gap-2">
                       <Settings className="h-3.5 w-3.5" /> 配置
                     </DropdownMenuItem>
-                    <DropdownMenuItem className="gap-2">
+                    <DropdownMenuItem
+                      className="gap-2"
+                      onClick={() => agent.externalUrl && window.open(agent.externalUrl, '_blank')}
+                    >
                       <ExternalLink className="h-3.5 w-3.5" /> 访问 VM
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />

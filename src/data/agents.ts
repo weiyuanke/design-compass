@@ -28,6 +28,10 @@ export interface MyAgent {
   vmRegion?: string;
   dataLocation?: string;
   isIsolated?: boolean;
+  // External interaction URL (for agents that open in separate interface)
+  externalUrl?: string;
+  // Whether this agent requires external interface for interaction
+  requiresExternalInterface?: boolean;
 }
 
 export interface Template {
@@ -115,6 +119,7 @@ export const platformAgents: PlatformAgent[] = [
 ];
 
 // 用户创建的 Agent - 自托管特性
+// 所有自托管 Agent 都需要通过外部工作台进行交互
 export const myAgents: MyAgent[] = [
   {
     id: "my-1",
@@ -130,6 +135,8 @@ export const myAgents: MyAgent[] = [
     vmRegion: "本地机器",
     dataLocation: "本地存储",
     isIsolated: true,
+    externalUrl: "https://openclaw.internal/dashboard",
+    requiresExternalInterface: true,
   },
   {
     id: "my-2",
@@ -145,6 +152,8 @@ export const myAgents: MyAgent[] = [
     vmRegion: "本地机器",
     dataLocation: "本地存储",
     isIsolated: true,
+    externalUrl: "http://127.0.0.1:3000/",
+    requiresExternalInterface: true,
   },
   {
     id: "my-3",
@@ -160,6 +169,8 @@ export const myAgents: MyAgent[] = [
     vmRegion: "本地机器",
     dataLocation: "本地存储",
     isIsolated: true,
+    externalUrl: "https://chatbot.internal/workspace",
+    requiresExternalInterface: true,
   },
 ];
 
@@ -171,6 +182,7 @@ export const templates: Template[] = [
 ];
 
 // Helper: 构建对话页 Agent 选择列表（平台 + 我的）
+// 过滤掉需要外部交互的 Agent
 export function getAllChatAgents() {
   const platform = platformAgents.map((a) => ({
     id: a.id,
@@ -186,7 +198,7 @@ export function getAllChatAgents() {
     category: a.category,
   }));
   const mine = myAgents
-    .filter((a) => a.status === "active")
+    .filter((a) => a.status === "active" && !a.requiresExternalInterface)
     .map((a) => ({
       id: a.id,
       name: a.name,
