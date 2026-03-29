@@ -1,11 +1,11 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Send, Paperclip, Bot, User, Plus, ChevronDown, MessageSquare, Sparkles, Zap, Shield, TrendingUp } from "lucide-react";
+import { Send, Paperclip, Bot, User, Plus, ChevronDown, MessageSquare, Sparkles, Zap, Shield, TrendingUp, Brain } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useSearchParams } from "react-router-dom";
-import { getAllChatAgents } from "@/data/agents";
+import { getAllChatAgents, platformAgents } from "@/data/agents";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -33,6 +33,30 @@ interface Session {
 const { platform, mine, all } = getAllChatAgents();
 const agentLookup = Object.fromEntries(all.map((a) => [a.id, a]));
 
+// 智能路由：根据问题内容匹配最合适的 Agent
+const routeToAgent = (question: string): string | null => {
+  const q = question.toLowerCase();
+
+  // 关键词匹配规则
+  const rules: { keywords: string[]; agentId: string }[] = [
+    { keywords: ["k8s", "kubernetes", "集群", "pod", "节点", "运维", "诊断"], agentId: "k8s-ops" },
+    { keywords: ["jira", "项目", "会议", "需求", "周报", "进度"], agentId: "project-mgr" },
+    { keywords: ["ask", "离线任务", "虚拟机", "日志"], agentId: "ask-support" },
+    { keywords: ["请假", "报销", "行政", "证明"], agentId: "admin-helper" },
+    { keywords: ["研报", "报告", "分析", "解读", "目标价", "盈利预测"], agentId: "report-analyzer" },
+    { keywords: ["舆情", "新闻", "情绪", "监控", "告警", "交易信号"], agentId: "sentinel" },
+  ];
+
+  for (const rule of rules) {
+    if (rule.keywords.some((k) => q.includes(k))) {
+      return rule.agentId;
+    }
+  }
+
+  // 如果没有匹配到，返回第一个平台 Agent 作为默认
+  return platform.length > 0 ? platform[0].id : null;
+};
+
 const ChatPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const initialAgentId = searchParams.get("agent") || searchParams.get("tool") || "";
@@ -41,6 +65,7 @@ const ChatPage = () => {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [input, setInput] = useState("");
+  const [isRouting, setIsRouting] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const agent = selectedAgentId ? agentLookup[selectedAgentId] : null;
@@ -83,6 +108,78 @@ const ChatPage = () => {
     setSessions((prev) => [newSession, ...prev]);
     setActiveSessionId(newSession.id);
     setSelectedAgentId(agentId);
+  };
+
+  // 智能发送：根据问题内容自动路由到合适的 Agent
+  const handleSmartSend = () => {
+    const content = input.trim();
+    if (!content) return;
+
+    setIsRouting(true);
+
+    // 智能路由到最合适的 Agent
+    const matchedAgentId = routeToAgent(content);
+
+    setTimeout(() => {
+      if (matchedAgentId) {
+        // 检查是否已有该 Agent 的会话
+        let existingSession = sessions.find((s) => s.agentId === matchedAgentId);
+
+        if (!existingSession) {
+          // 创建新会话
+          const a = agentLookup[matchedAgentId];
+          if (!a) return;
+          const newSession: Session = {
+            id: Date.now().toString(),
+            agentId: matchedAgentId,
+            title: `与 ${a.name} 的对话`,
+            updatedAt: new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" }),
+            messages: [],
+          };
+          setSessions((prev) => [newSession, ...prev]);
+          existingSession = newSession;
+        }
+
+        setActiveSessionId(existingSession.id);
+        setSelectedAgentId(matchedAgentId);
+        setSearchParams({ agent: matchedAgentId });
+        setInput("");
+        setIsRouting(false);
+
+        // 添加用户消息
+        const userMsg: Message = {
+          id: Date.now().toString(),
+          role: "user",
+          content,
+          timestamp: new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" }),
+        };
+
+        setSessions((prev) =>
+          prev.map((s) =>
+            s.id === existingSession!.id
+              ? { ...s, messages: [...s.messages, userMsg], updatedAt: userMsg.timestamp }
+              : s
+          )
+        );
+
+        // 模拟 Agent 响应
+        setTimeout(() => {
+          const agentMsg: Message = {
+            id: (Date.now() + 1).toString(),
+            role: "agent",
+            content: `收到你的问题："${content}"\n\n正在为你处理...`,
+            timestamp: new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" }),
+          };
+          setSessions((prev) =>
+            prev.map((s) =>
+              s.id === existingSession!.id
+                ? { ...s, messages: [...s.messages, agentMsg], updatedAt: agentMsg.timestamp }
+                : s
+            )
+          );
+        }, 600);
+      }
+    }, 500);
   };
 
   const handleSend = (text?: string) => {
@@ -134,8 +231,8 @@ const ChatPage = () => {
               animate={{ opacity: 1, y: 0 }}
               className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 text-primary text-sm font-medium"
             >
-              <Sparkles className="h-4 w-4" />
-              <span>智能助手，随时待命</span>
+              <Brain className="h-4 w-4" />
+              <span>智能路由，自动匹配专家 Agent</span>
             </motion.div>
             <motion.h1
               initial={{ opacity: 0, y: 20 }}
@@ -143,7 +240,7 @@ const ChatPage = () => {
               transition={{ delay: 0.1 }}
               className="text-3xl md:text-4xl font-bold text-foreground"
             >
-              选择一个专业 Agent<br className="md:hidden" />开始智能对话
+              有什么可以帮你的？
             </motion.h1>
             <motion.p
               initial={{ opacity: 0, y: 20 }}
@@ -151,8 +248,79 @@ const ChatPage = () => {
               transition={{ delay: 0.2 }}
               className="text-muted-foreground text-sm md:text-base max-w-xl mx-auto"
             >
-              从投研分析到运维监控，从项目管理到行政支持，专业 Agent 团队为你服务
+              输入问题，系统将自动为你匹配最合适的专家 Agent
             </motion.p>
+
+            {/* Smart Input Box */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              className="max-w-2xl mx-auto mt-8"
+            >
+              <div className="flex items-center gap-2 p-2 rounded-xl bg-card border border-border/50 shadow-lg shadow-primary/5 focus-within:border-primary/30 focus-within:shadow-primary/10 transition-all">
+                <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                  <Brain className="h-5 w-5 text-primary" />
+                </div>
+                <Input
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSmartSend();
+                    }
+                  }}
+                  placeholder="例如：帮我分析今日舆情、诊断集群问题、生成本周工作汇总..."
+                  className="flex-1 border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 h-auto text-sm"
+                  disabled={isRouting}
+                />
+                <Button
+                  onClick={handleSmartSend}
+                  disabled={!input.trim() || isRouting}
+                  className="h-9 px-4 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-30 flex-shrink-0"
+                >
+                  {isRouting ? (
+                    <motion.div
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                    >
+                      <Sparkles className="h-4 w-4" />
+                    </motion.div>
+                  ) : (
+                    <Send className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+
+              {/* Quick Suggestions */}
+              <div className="flex flex-wrap gap-2 mt-4 justify-center">
+                <Badge
+                  variant="outline"
+                  className="cursor-pointer hover:bg-primary/10 hover:border-primary/30 transition-colors py-2 px-3 text-xs"
+                  onClick={() => setInput("帮我分析今日舆情")}
+                >
+                  <Sparkles className="h-3 w-3 mr-1" />
+                  分析今日舆情
+                </Badge>
+                <Badge
+                  variant="outline"
+                  className="cursor-pointer hover:bg-primary/10 hover:border-primary/30 transition-colors py-2 px-3 text-xs"
+                  onClick={() => setInput("诊断集群问题")}
+                >
+                  <Zap className="h-3 w-3 mr-1" />
+                  诊断集群问题
+                </Badge>
+                <Badge
+                  variant="outline"
+                  className="cursor-pointer hover:bg-primary/10 hover:border-primary/30 transition-colors py-2 px-3 text-xs"
+                  onClick={() => setInput("生成本周工作汇总")}
+                >
+                  <MessageSquare className="h-3 w-3 mr-1" />
+                  生成工作汇总
+                </Badge>
+              </div>
+            </motion.div>
           </div>
         </div>
 
