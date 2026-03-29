@@ -30,7 +30,7 @@ const ToolsPage = () => {
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
         <h1 className="text-2xl font-bold text-foreground">平台 Agent</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          平台内置的公共 Agent，开箱即用，直接对话交互
+          平台预置的专业 Agent，覆盖运维、投研、行政等场景，无需配置即可使用
         </p>
       </motion.div>
 
