@@ -10,6 +10,8 @@ import TemplatesPage from "./pages/TemplatesPage";
 import MyAgentsPage from "./pages/MyAgentsPage";
 import ToolsPage from "./pages/ToolsPage";
 import McpPage from "./pages/McpPage";
+import DeployMcpPage from "./pages/DeployMcpPage";
+import MonitorPage from "./pages/MonitorPage";
 import SkillsPage from "./pages/SkillsPage";
 import CreateAgentPage from "./pages/CreateAgentPage";
 import SettingsPage from "./pages/SettingsPage";
@@ -30,6 +32,8 @@ const App = () => (
             <Route path="/templates" element={<TemplatesPage />} />
             <Route path="/tools" element={<ToolsPage />} />
             <Route path="/mcp" element={<McpPage />} />
+            <Route path="/mcp/deploy" element={<DeployMcpPage />} />
+            <Route path="/monitor" element={<MonitorPage />} />
             <Route path="/skills" element={<SkillsPage />} />
             <Route path="/my-agents" element={<MyAgentsPage />} />
             <Route path="/create" element={<CreateAgentPage />} />
