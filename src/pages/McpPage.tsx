@@ -16,6 +16,7 @@ const statusMap = {
 
 const McpPage = () => {
   const [search, setSearch] = useState("");
+  const navigate = useNavigate();
 
   const filteredPlatform = platformMcpServers.filter(
     (s) => s.name.toLowerCase().includes(search.toLowerCase()) || s.description.includes(search) || s.category.includes(search)
