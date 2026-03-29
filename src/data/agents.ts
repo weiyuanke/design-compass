@@ -35,6 +35,9 @@ export const platformAgents: PlatformAgent[] = [
   { id: "project-mgr", name: "项目管理助手", emoji: "📋", description: "Jira 操作、会议共识记录、需求管理、周报整理", category: "效率", calls: 12300, quickCommands: ["创建 Jira 需求", "整理会议共识", "生成本周工作汇总", "同步项目进度"] },
   { id: "ask-support", name: "ASK 系统专家", emoji: "🖥️", description: "ASK 问题排查、提交离线任务、创建虚拟机", category: "运维", calls: 6780, quickCommands: ["排查 ASK 问题", "提交离线任务", "创建虚拟机", "查看任务日志"] },
   { id: "admin-helper", name: "行政小助手", emoji: "🏢", description: "请假申请、费用报销、行政事务办理", category: "行政", calls: 4560, quickCommands: ["申请请假", "提交报销", "查询报销进度", "开具证明"] },
+  { id: "factor-mining", name: "因子挖掘 Agent", emoji: "⛏️", description: "自动发现有效因子，支持遗传算法和神经网络挖掘，生成因子分析报告", category: "投研", calls: 15600, quickCommands: ["开始因子挖掘", "运行遗传算法", "神经网络挖掘", "查看因子 IC", "导出因子库"] },
+  { id: "report-analyzer", name: "研报解读 Agent", emoji: "📄", description: "解析卖方研报，提取核心观点、盈利预测和目标价，生成结构化摘要", category: "投研", calls: 9800, quickCommands: ["解读最新研报", "提取核心观点", "汇总盈利预测", "对比历史评级"] },
+  { id: "sentinel", name: "舆情监控 Agent", emoji: "📡", description: "实时监控新闻/社交媒体/公告，生成情绪评分和交易信号告警", category: "投研", calls: 23400, quickCommands: ["查看今日舆情", "情绪评分汇总", "负面新闻告警", "生成交易信号"] },
 ];
 
 // 用户创建的 Agent
