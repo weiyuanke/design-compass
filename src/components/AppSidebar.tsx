@@ -11,6 +11,7 @@ import {
   Bell,
   Cpu,
   Library,
+  Users,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -46,6 +47,11 @@ const extensionNav = [
   { title: "MCP Server", url: "/mcp", icon: Server },
   { title: "Skill 市场", url: "/skills", icon: Puzzle },
   { title: "知识库 RAG", url: "/knowledge-base", icon: Library },
+];
+
+// Multi-Agent Collaboration
+const collaborationNav = [
+  { title: "多 Agent 协作", url: "/collaboration", icon: Users },
 ];
 
 // Automation - Workflow, Scheduler, Notification
@@ -146,6 +152,16 @@ export function AppSidebar() {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <NavSection items={extensionNav} collapsed={collapsed} />
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        {/* Multi-Agent Collaboration */}
+        <SidebarGroup>
+          <SidebarGroupLabel className="text-muted-foreground/60 text-xs uppercase tracking-wider">
+            多 Agent 协作
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            <NavSection items={collaborationNav} collapsed={collapsed} />
           </SidebarGroupContent>
         </SidebarGroup>
 
