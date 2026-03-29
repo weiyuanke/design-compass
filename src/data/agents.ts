@@ -22,6 +22,12 @@ export interface MyAgent {
   calls: number;
   created: string;
   quickCommands: string[];
+  // Self-hosted specific fields
+  vmId?: string;
+  vmStatus?: "running" | "stopped" | "deploying";
+  vmRegion?: string;
+  dataLocation?: string;
+  isIsolated?: boolean;
 }
 
 export interface Template {
@@ -120,13 +126,83 @@ export const platformAgents: PlatformAgent[] = [
   },
 ];
 
-// 用户创建的 Agent
+// 用户创建的 Agent - 自托管特性
 export const myAgents: MyAgent[] = [
-  { id: "my-1", name: "我的爬虫助手", emoji: "🕷️", template: "OpenCrawl", status: "active", calls: 456, created: "2026-03-15", quickCommands: ["抓取目标页面", "提取数据", "导出结果"] },
-  { id: "my-2", name: "客服机器人", emoji: "💬", template: "Chatbot", status: "active", calls: 1289, created: "2026-03-10", quickCommands: ["查看常见问题", "转接人工", "查询订单"] },
-  { id: "my-3", name: "代码审查助手", emoji: "💻", template: "Coding Agent", status: "inactive", calls: 87, created: "2026-03-20", quickCommands: ["审查代码", "检查规范", "生成报告"] },
-  { id: "my-4", name: "合同摘要生成器", emoji: "📝", template: "文档助手", status: "active", calls: 234, created: "2026-03-22", quickCommands: ["生成摘要", "提取条款", "对比合同"] },
-  { id: "my-5", name: "数据采集 Bot", emoji: "🕷️", template: "OpenCrawl", status: "active", calls: 678, created: "2026-03-25", quickCommands: ["开始采集", "查看进度", "导出数据"] },
+  { 
+    id: "my-1", 
+    name: "我的爬虫助手", 
+    emoji: "🕷️", 
+    template: "OpenCrawl", 
+    status: "active", 
+    calls: 456, 
+    created: "2026-03-15", 
+    quickCommands: ["抓取目标页面", "提取数据", "导出结果"],
+    vmId: "vm-crawl-001",
+    vmStatus: "running",
+    vmRegion: "华东 - 上海",
+    dataLocation: "本地存储 (上海)",
+    isIsolated: true,
+  },
+  { 
+    id: "my-2", 
+    name: "客服机器人", 
+    emoji: "💬", 
+    template: "Chatbot", 
+    status: "active", 
+    calls: 1289, 
+    created: "2026-03-10", 
+    quickCommands: ["查看常见问题", "转接人工", "查询订单"],
+    vmId: "vm-chat-002",
+    vmStatus: "running",
+    vmRegion: "华北 - 北京",
+    dataLocation: "本地存储 (北京)",
+    isIsolated: true,
+  },
+  { 
+    id: "my-3", 
+    name: "代码审查助手", 
+    emoji: "💻", 
+    template: "Coding Agent", 
+    status: "inactive", 
+    calls: 87, 
+    created: "2026-03-20", 
+    quickCommands: ["审查代码", "检查规范", "生成报告"],
+    vmId: "vm-code-003",
+    vmStatus: "stopped",
+    vmRegion: "华南 - 深圳",
+    dataLocation: "本地存储 (深圳)",
+    isIsolated: true,
+  },
+  { 
+    id: "my-4", 
+    name: "合同摘要生成器", 
+    emoji: "📝", 
+    template: "文档助手", 
+    status: "active", 
+    calls: 234, 
+    created: "2026-03-22", 
+    quickCommands: ["生成摘要", "提取条款", "对比合同"],
+    vmId: "vm-doc-004",
+    vmStatus: "running",
+    vmRegion: "华东 - 杭州",
+    dataLocation: "本地存储 (杭州)",
+    isIsolated: true,
+  },
+  { 
+    id: "my-5", 
+    name: "数据采集 Bot", 
+    emoji: "🕷️", 
+    template: "OpenCrawl", 
+    status: "active", 
+    calls: 678, 
+    created: "2026-03-25", 
+    quickCommands: ["开始采集", "查看进度", "导出数据"],
+    vmId: "vm-data-005",
+    vmStatus: "running",
+    vmRegion: "华西 - 成都",
+    dataLocation: "本地存储 (成都)",
+    isIsolated: true,
+  },
 ];
 
 // Agent 模版
