@@ -6,6 +6,9 @@ import {
   Activity,
   Server,
   Puzzle,
+  Workflow,
+  Clock,
+  Bell,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -23,8 +26,8 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 
-// Core navigation - main user-facing features
-const coreNav = [
+// Workbench - main user-facing features
+const workbenchNav = [
   { title: "首页", url: "/", icon: Home },
   { title: "对话", url: "/chat", icon: MessageSquare },
 ];
@@ -39,6 +42,13 @@ const agentNav = [
 const extensionNav = [
   { title: "MCP Server", url: "/mcp", icon: Server },
   { title: "Skill 市场", url: "/skills", icon: Puzzle },
+];
+
+// Automation - Workflow, Scheduler, Notification
+const automationNav = [
+  { title: "工作流编排", url: "/workflows", icon: Workflow },
+  { title: "定时任务", url: "/scheduler", icon: Clock },
+  { title: "通知中心", url: "/notifications", icon: Bell },
 ];
 
 // Admin/Management features
@@ -105,13 +115,13 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent>
-        {/* Core Features */}
+        {/* Workbench */}
         <SidebarGroup>
           <SidebarGroupLabel className="text-muted-foreground/60 text-xs uppercase tracking-wider">
-            核心功能
+            工作台
           </SidebarGroupLabel>
           <SidebarGroupContent>
-            <NavSection items={coreNav} collapsed={collapsed} />
+            <NavSection items={workbenchNav} collapsed={collapsed} />
           </SidebarGroupContent>
         </SidebarGroup>
 
@@ -132,6 +142,16 @@ export function AppSidebar() {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <NavSection items={extensionNav} collapsed={collapsed} />
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        {/* Automation */}
+        <SidebarGroup>
+          <SidebarGroupLabel className="text-muted-foreground/60 text-xs uppercase tracking-wider">
+            自动化
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            <NavSection items={automationNav} collapsed={collapsed} />
           </SidebarGroupContent>
         </SidebarGroup>
 

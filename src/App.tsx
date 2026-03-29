@@ -16,6 +16,9 @@ import SkillsPage from "./pages/SkillsPage";
 import CreateAgentPage from "./pages/CreateAgentPage";
 import SettingsPage from "./pages/SettingsPage";
 import NotFound from "./pages/NotFound";
+import WorkflowsPage from "./pages/WorkflowsPage";
+import SchedulerPage from "./pages/SchedulerPage";
+import NotificationsPage from "./pages/NotificationsPage";
 
 const queryClient = new QueryClient();
 
@@ -37,6 +40,9 @@ const App = () => (
             <Route path="/skills" element={<SkillsPage />} />
             <Route path="/my-agents" element={<MyAgentsPage />} />
             <Route path="/create" element={<CreateAgentPage />} />
+            <Route path="/workflows" element={<WorkflowsPage />} />
+            <Route path="/scheduler" element={<SchedulerPage />} />
+            <Route path="/notifications" element={<NotificationsPage />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
