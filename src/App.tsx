@@ -9,6 +9,8 @@ import ChatPage from "./pages/ChatPage";
 import TemplatesPage from "./pages/TemplatesPage";
 import MyAgentsPage from "./pages/MyAgentsPage";
 import ToolsPage from "./pages/ToolsPage";
+import McpPage from "./pages/McpPage";
+import SkillsPage from "./pages/SkillsPage";
 import CreateAgentPage from "./pages/CreateAgentPage";
 import SettingsPage from "./pages/SettingsPage";
 import NotFound from "./pages/NotFound";
