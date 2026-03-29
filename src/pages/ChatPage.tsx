@@ -1,6 +1,35 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Send, Paperclip, Bot, User, Plus, ChevronDown, MessageSquare, Sparkles, Zap, Shield, TrendingUp, Brain } from "lucide-react";
+import {
+  Send,
+  Paperclip,
+  Bot,
+  User,
+  Plus,
+  MessageSquare,
+  Sparkles,
+  Zap,
+  Shield,
+  TrendingUp,
+  Brain,
+  Search,
+  MoreVertical,
+  Copy,
+  RotateCcw,
+  ThumbsUp,
+  ThumbsDown,
+  Share2,
+  ChevronRight,
+  ChevronLeft,
+  X,
+  ExternalLink,
+  Clock,
+  CheckCircle2,
+  AlertCircle,
+  Wrench,
+  FileText,
+  Code2,
+} from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -14,12 +43,23 @@ import {
   DropdownMenuSeparator,
   DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
 
 interface Message {
   id: string;
-  role: "user" | "agent";
+  role: "user" | "agent" | "system";
   content: string;
   timestamp: string;
+  agentId?: string;
+  agentName?: string;
+  agentEmoji?: string;
 }
 
 interface Session {
@@ -37,7 +77,6 @@ const agentLookup = Object.fromEntries(all.map((a) => [a.id, a]));
 const routeToAgent = (question: string): string | null => {
   const q = question.toLowerCase();
 
-  // 关键词匹配规则
   const rules: { keywords: string[]; agentId: string }[] = [
     { keywords: ["k8s", "kubernetes", "集群", "pod", "节点", "运维", "诊断"], agentId: "k8s-ops" },
     { keywords: ["jira", "项目", "会议", "需求", "周报", "进度"], agentId: "project-mgr" },
@@ -53,8 +92,55 @@ const routeToAgent = (question: string): string | null => {
     }
   }
 
-  // 如果没有匹配到，返回第一个平台 Agent 作为默认
   return platform.length > 0 ? platform[0].id : null;
+};
+
+// 模拟工具推荐
+const getRecommendedTools = (agentId: string) => {
+  const tools: Record<string, { icon: React.ReactNode; label: string; action: string }[]> = {
+    "k8s-ops": [
+      { icon: <FileText className="h-3.5 w-3.5" />, label: "查看监控", action: "monitor" },
+      { icon: <Search className="h-3.5 w-3.5" />, label: "Pod 列表", action: "pods" },
+      { icon: <Code2 className="h-3.5 w-3.5" />, label: "生成报告", action: "report" },
+    ],
+    "project-mgr": [
+      { icon: <FileText className="h-3.5 w-3.5" />, label: "创建 Jira", action: "jira" },
+      { icon: <Clock className="h-3.5 w-3.5" />, label: "查看进度", action: "progress" },
+      { icon: <Code2 className="h-3.5 w-3.5" />, label: "生成周报", action: "report" },
+    ],
+    sentinel: [
+      { icon: <FileText className="h-3.5 w-3.5" />, label: "今日舆情", action: "today" },
+      { icon: <AlertCircle className="h-3.5 w-3.5" />, label: "告警列表", action: "alerts" },
+      { icon: <TrendingUp className="h-3.5 w-3.5" />, label: "情绪分析", action: "sentiment" },
+    ],
+  };
+
+  return tools[agentId] || [
+    { icon: <Wrench className="h-3.5 w-3.5" />, label: "更多工具", action: "more" },
+  ];
+};
+
+// 模拟追问建议
+const getFollowUpSuggestions = (lastMessage: string, agentId: string): string[] => {
+  const suggestions: Record<string, string[]> = {
+    "k8s-ops": [
+      "如何优化资源限制？",
+      "查看节点详细信息",
+      "生成诊断报告",
+    ],
+    "project-mgr": [
+      "同步到 Jira",
+      "邀请相关人员",
+      "设置截止日期",
+    ],
+    sentinel: [
+      "查看负面新闻详情",
+      "生成情绪趋势图",
+      "设置监控告警",
+    ],
+  };
+
+  return suggestions[agentId] || ["了解更多", "继续深入", "换个话题"];
 };
 
 const ChatPage = () => {
@@ -66,6 +152,8 @@ const ChatPage = () => {
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [input, setInput] = useState("");
   const [isRouting, setIsRouting] = useState(false);
+  const [showRightPanel, setShowRightPanel] = useState(true);
+  const [hoveredMessageId, setHoveredMessageId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const agent = selectedAgentId ? agentLookup[selectedAgentId] : null;
@@ -77,7 +165,9 @@ const ChatPage = () => {
   }, [messages]);
 
   useEffect(() => {
-    if (initialAgentId && agentLookup[initialAgentId] && sessions.length === 0) {
+    if (sessions.length === 0) {
+      // 默认不创建会话，显示首页
+    } else if (initialAgentId && agentLookup[initialAgentId] && !activeSessionId) {
       createSession(initialAgentId);
     }
   }, []);
@@ -102,6 +192,9 @@ const ChatPage = () => {
           role: "agent",
           content: `你好！我是${a.name}，${a.description}。有什么可以帮你的吗？`,
           timestamp: new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" }),
+          agentId: a.id,
+          agentName: a.name,
+          agentEmoji: a.emoji,
         },
       ],
     };
@@ -110,23 +203,18 @@ const ChatPage = () => {
     setSelectedAgentId(agentId);
   };
 
-  // 智能发送：根据问题内容自动路由到合适的 Agent
   const handleSmartSend = () => {
     const content = input.trim();
     if (!content) return;
 
     setIsRouting(true);
-
-    // 智能路由到最合适的 Agent
     const matchedAgentId = routeToAgent(content);
 
     setTimeout(() => {
       if (matchedAgentId) {
-        // 检查是否已有该 Agent 的会话
         let existingSession = sessions.find((s) => s.agentId === matchedAgentId);
 
         if (!existingSession) {
-          // 创建新会话
           const a = agentLookup[matchedAgentId];
           if (!a) return;
           const newSession: Session = {
@@ -146,7 +234,6 @@ const ChatPage = () => {
         setInput("");
         setIsRouting(false);
 
-        // 添加用户消息
         const userMsg: Message = {
           id: Date.now().toString(),
           role: "user",
@@ -162,13 +249,15 @@ const ChatPage = () => {
           )
         );
 
-        // 模拟 Agent 响应
         setTimeout(() => {
           const agentMsg: Message = {
             id: (Date.now() + 1).toString(),
             role: "agent",
             content: `收到你的问题："${content}"\n\n正在为你处理...`,
             timestamp: new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" }),
+            agentId: agentLookup[matchedAgentId]?.id,
+            agentName: agentLookup[matchedAgentId]?.name,
+            agentEmoji: agentLookup[matchedAgentId]?.emoji,
           };
           setSessions((prev) =>
             prev.map((s) =>
@@ -208,6 +297,9 @@ const ChatPage = () => {
         role: "agent",
         content: `正在处理你的请求："${content}"...\n\n已为你完成处理。如果需要更多帮助，请继续提问。`,
         timestamp: new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" }),
+        agentId: agent?.id,
+        agentName: agent?.name,
+        agentEmoji: agent?.emoji,
       };
       setSessions((prev) =>
         prev.map((s) =>
@@ -219,11 +311,14 @@ const ChatPage = () => {
     }, 800);
   };
 
-  // Landing: no agent selected
-  if (!agent || !activeSessionId) {
+  const copyMessage = (content: string) => {
+    navigator.clipboard.writeText(content);
+  };
+
+  // 首页模式（未选择 Agent）
+  if (!activeSessionId) {
     return (
       <div className="flex flex-col h-[calc(100vh-3.5rem)] overflow-y-auto">
-        {/* Hero Section */}
         <div className="bg-gradient-to-b from-primary/5 to-transparent px-6 py-12">
           <div className="max-w-4xl mx-auto text-center space-y-4">
             <motion.div
@@ -251,7 +346,6 @@ const ChatPage = () => {
               输入问题，系统将自动为你匹配最合适的专家 Agent
             </motion.p>
 
-            {/* Smart Input Box */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -293,7 +387,6 @@ const ChatPage = () => {
                 </Button>
               </div>
 
-              {/* Quick Suggestions */}
               <div className="flex flex-wrap gap-2 mt-4 justify-center">
                 <Badge
                   variant="outline"
@@ -324,10 +417,8 @@ const ChatPage = () => {
           </div>
         </div>
 
-        {/* Agent Grid */}
         <div className="flex-1 px-6 py-8">
           <div className="max-w-6xl mx-auto space-y-8">
-            {/* Platform Agents */}
             <div>
               <div className="flex items-center gap-2 mb-4">
                 <Zap className="h-5 w-5 text-primary" />
@@ -377,7 +468,6 @@ const ChatPage = () => {
               </div>
             </div>
 
-            {/* My Agents */}
             {mine.length > 0 && (
               <div>
                 <div className="flex items-center gap-2 mb-4">
@@ -415,106 +505,107 @@ const ChatPage = () => {
     );
   }
 
+  const currentAgent = agent;
+  const recommendedTools = getRecommendedTools(currentAgent?.id || "");
+  const followUpSuggestions = messages.length > 0
+    ? getFollowUpSuggestions(messages[messages.length - 1].content, currentAgent?.id || "")
+    : [];
+
+  // 对话详情页（方案三）
   return (
     <div className="flex h-[calc(100vh-3.5rem)]">
-      {/* Session sidebar */}
-      <div className="w-56 border-r border-border/50 flex-col flex-shrink-0 hidden md:flex">
+      {/* 左侧会话列表（窄栏） */}
+      <div className="w-16 border-r border-border/50 flex-col flex-shrink-0 hidden md:flex bg-card/30">
         <div className="p-3">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="w-full justify-between gap-2 h-9 text-sm">
-                <span className="flex items-center gap-2 truncate">
-                  <span>{agent.emoji}</span>
-                  <span className="truncate">{agent.name}</span>
-                </span>
-                <ChevronDown className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-52 max-h-80 overflow-y-auto">
-              <DropdownMenuLabel className="text-xs text-muted-foreground">平台 Agent</DropdownMenuLabel>
-              {platform.map((a) => (
-                <DropdownMenuItem key={a.id} onClick={() => selectAgent(a.id)} className="gap-2">
-                  <span>{a.emoji}</span><span>{a.name}</span>
-                </DropdownMenuItem>
-              ))}
-              {mine.length > 0 && (
-                <>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuLabel className="text-xs text-muted-foreground">我的 Agent</DropdownMenuLabel>
-                  {mine.map((a) => (
-                    <DropdownMenuItem key={a.id} onClick={() => selectAgent(a.id)} className="gap-2">
-                      <span>{a.emoji}</span><span>{a.name}</span>
-                    </DropdownMenuItem>
-                  ))}
-                </>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="w-10 h-10 mx-auto"
+                  onClick={() => createSession(selectedAgentId)}
+                >
+                  <Plus className="h-5 w-5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="right">新建对话</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
 
-        <div className="p-3 pt-0">
-          <Button variant="ghost" size="sm" className="w-full justify-start gap-2 text-muted-foreground hover:text-foreground h-8" onClick={() => createSession(selectedAgentId)}>
-            <Plus className="h-3.5 w-3.5" /> 新建对话
-          </Button>
-        </div>
-
-        <div className="flex-1 overflow-y-auto px-2 space-y-0.5">
-          {sessions.map((s) => (
-            <button
-              key={s.id}
-              onClick={() => { setActiveSessionId(s.id); setSelectedAgentId(s.agentId); }}
-              className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors truncate ${
-                s.id === activeSessionId ? "bg-primary/10 text-primary font-medium" : "text-muted-foreground hover:bg-secondary/50"
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                <span className="text-xs">{agentLookup[s.agentId]?.emoji}</span>
-                <span className="truncate">{s.title}</span>
-              </div>
-              <p className="text-xs text-muted-foreground/60 mt-0.5">{s.updatedAt}</p>
-            </button>
-          ))}
-        </div>
+        <ScrollArea className="flex-1 px-2">
+          <div className="space-y-1">
+            {sessions.map((s) => (
+              <TooltipProvider key={s.id}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={() => { setActiveSessionId(s.id); setSelectedAgentId(s.agentId); }}
+                      className={`w-full aspect-square rounded-xl flex items-center justify-center transition-all ${
+                        s.id === activeSessionId
+                          ? "bg-primary/10 text-primary"
+                          : "text-muted-foreground hover:bg-secondary/50"
+                      }`}
+                    >
+                      <span className="text-xl">{agentLookup[s.agentId]?.emoji}</span>
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="right">
+                    <div className="text-sm font-medium">{s.title}</div>
+                    <div className="text-xs text-muted-foreground">{s.updatedAt}</div>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            ))}
+          </div>
+        </ScrollArea>
       </div>
 
-      {/* Chat area */}
-      <div className="flex-1 flex flex-col min-w-0">
-        {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-border/50 bg-card/50 backdrop-blur">
-          <div className="flex items-center gap-3">
-            <div className={`h-10 w-10 rounded-xl bg-gradient-to-br ${agent.gradient || 'from-primary/20 to-primary/5'} flex items-center justify-center text-xl flex-shrink-0`}>
-              {agent.emoji}
+      {/* 中间对话区域 */}
+      <div className="flex-1 flex flex-col min-w-0 bg-background">
+        {/* 顶部信息栏 */}
+        <div className="flex items-center justify-between px-6 py-3 border-b border-border/50 bg-card/80 backdrop-blur">
+          <div className="flex items-center gap-4">
+            <div className={`h-11 w-11 rounded-xl bg-gradient-to-br ${currentAgent?.gradient || 'from-primary/20 to-primary/5'} flex items-center justify-center text-2xl flex-shrink-0 shadow-lg`}>
+              {currentAgent?.emoji}
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-sm font-semibold text-foreground">{agent.name}</h2>
-                <Badge variant="secondary" className="text-xs">{agent.type === "platform" ? "平台" : "我的"}</Badge>
+                <h2 className="text-base font-semibold text-foreground">{currentAgent?.name}</h2>
+                <Badge variant="secondary" className="text-xs">{currentAgent?.type === "platform" ? "平台" : "我的"}</Badge>
               </div>
-              <div className="flex items-center gap-2 mt-0.5">
+              <div className="flex items-center gap-3 mt-0.5">
                 <span className="text-xs text-emerald-500 flex items-center gap-1">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> 在线
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" /> 在线
                 </span>
-                {agent.capabilities && (
-                  <span className="text-xs text-muted-foreground hidden lg:inline">
-                    · {agent.capabilities.slice(0, 3).join(" · ")}
-                  </span>
+                {currentAgent?.capabilities && (
+                  <div className="hidden lg:flex items-center gap-1">
+                    {currentAgent.capabilities.slice(0, 3).map((cap, i) => (
+                      <span key={i} className="text-xs text-muted-foreground">
+                        {i > 0 && "·"} {cap}
+                      </span>
+                    ))}
+                  </div>
                 )}
               </div>
             </div>
           </div>
 
-          {/* Mobile agent switcher */}
-          <div className="md:hidden">
+          <div className="flex items-center gap-2">
+            {/* Agent 切换 */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="gap-1 text-muted-foreground">
-                  切换 <ChevronDown className="h-3.5 w-3.5" />
+                <Button variant="ghost" size="sm" className="gap-2">
+                  <Bot className="h-4 w-4" />
+                  <span className="hidden sm:inline">切换 Agent</span>
+                  <ChevronRight className="h-3.5 w-3.5 rotate-90" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="max-h-80 overflow-y-auto">
+              <DropdownMenuContent align="end" className="w-56 max-h-80 overflow-y-auto">
                 <DropdownMenuLabel className="text-xs text-muted-foreground">平台 Agent</DropdownMenuLabel>
                 {platform.map((a) => (
-                  <DropdownMenuItem key={a.id} onClick={() => selectAgent(a.id)} className="gap-2">
+                  <DropdownMenuItem key={a.id} onClick={() => selectAgent(a.id)} className="gap-2 cursor-pointer">
                     <span>{a.emoji}</span><span>{a.name}</span>
                   </DropdownMenuItem>
                 ))}
@@ -523,7 +614,7 @@ const ChatPage = () => {
                     <DropdownMenuSeparator />
                     <DropdownMenuLabel className="text-xs text-muted-foreground">我的 Agent</DropdownMenuLabel>
                     {mine.map((a) => (
-                      <DropdownMenuItem key={a.id} onClick={() => selectAgent(a.id)} className="gap-2">
+                      <DropdownMenuItem key={a.id} onClick={() => selectAgent(a.id)} className="gap-2 cursor-pointer">
                         <span>{a.emoji}</span><span>{a.name}</span>
                       </DropdownMenuItem>
                     ))}
@@ -531,67 +622,346 @@ const ChatPage = () => {
                 )}
               </DropdownMenuContent>
             </DropdownMenu>
+
+            <Separator orientation="vertical" className="h-6" />
+
+            {/* 右侧面板切换 */}
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setShowRightPanel(!showRightPanel)}
+                    className={showRightPanel ? "bg-primary/10 text-primary" : ""}
+                  >
+                    {showRightPanel ? (
+                      <ChevronRight className="h-4 w-4" />
+                    ) : (
+                      <ChevronLeft className="h-4 w-4" />
+                    )}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {showRightPanel ? "收起面板" : "展开详情"}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon">
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem>
+                  <Share2 className="h-4 w-4 mr-2" /> 分享对话
+                </DropdownMenuItem>
+                <DropdownMenuItem>
+                  <FileText className="h-4 w-4 mr-2" /> 导出记录
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem className="text-destructive">
+                  清空对话
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
 
-        {/* Messages */}
-        <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4">
-          <AnimatePresence>
-            {messages.map((msg) => (
-              <motion.div
-                key={msg.id}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                className={`flex gap-3 ${msg.role === "user" ? "flex-row-reverse" : ""}`}
-              >
-                <div className={`h-9 w-9 rounded-xl flex items-center justify-center flex-shrink-0 ${
-                  msg.role === "user" ? "bg-accent/15 text-accent" : "bg-primary/10 text-primary"
-                }`}>
-                  {msg.role === "user" ? <User className="h-5 w-5" /> : <Bot className="h-5 w-5" />}
-                </div>
-                <div className={`max-w-[75%] space-y-1 ${msg.role === "user" ? "items-end" : ""}`}>
-                  <div className={`rounded-2xl px-4 py-3 text-sm leading-relaxed ${
-                    msg.role === "user" ? "bg-primary/15 text-foreground rounded-tr-md" : "bg-secondary/60 text-foreground rounded-tl-md"
+        {/* 消息列表 */}
+        <ScrollArea className="flex-1 px-6 py-4">
+          <div className="max-w-3xl mx-auto space-y-6">
+            <AnimatePresence>
+              {messages.map((msg) => (
+                <motion.div
+                  key={msg.id}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  onMouseEnter={() => setHoveredMessageId(msg.id)}
+                  onMouseLeave={() => setHoveredMessageId(null)}
+                  className={`group flex gap-3 ${msg.role === "user" ? "flex-row-reverse" : ""}`}
+                >
+                  {/* Avatar */}
+                  <div className={`h-9 w-9 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                    msg.role === "user"
+                      ? "bg-accent/15 text-accent"
+                      : `bg-gradient-to-br ${currentAgent?.gradient || 'from-primary/20 to-primary/5'} text-primary`
                   }`}>
-                    <p className="whitespace-pre-wrap">{msg.content}</p>
+                    {msg.role === "user" ? (
+                      <User className="h-5 w-5" />
+                    ) : (
+                      <span className="text-lg">{msg.agentEmoji || currentAgent?.emoji}</span>
+                    )}
                   </div>
-                  <span className="text-xs text-muted-foreground/50 px-1">{msg.timestamp}</span>
-                </div>
-              </motion.div>
-            ))}
-          </AnimatePresence>
-          <div ref={messagesEndRef} />
-        </div>
 
-        {/* Quick commands */}
-        <div className="px-4 pb-2">
-          <div className="flex flex-wrap gap-2">
-            {agent.quickCommands?.map((cmd) => (
-              <button key={cmd} onClick={() => handleSend(cmd)} className="text-xs px-3 py-1.5 rounded-full bg-secondary/50 border border-border/50 text-muted-foreground hover:text-primary hover:border-primary/30 transition-all">
-                {cmd}
-              </button>
-            ))}
+                  {/* Message Content */}
+                  <div className={`flex-1 max-w-[75%] ${msg.role === "user" ? "flex flex-col items-end" : ""}`}>
+                    {/* Name & Time */}
+                    <div className={`flex items-center gap-2 mb-1 ${msg.role === "user" ? "flex-row-reverse" : ""}`}>
+                      <span className="text-xs font-medium text-foreground">
+                        {msg.role === "user" ? "你" : msg.agentName || currentAgent?.name}
+                      </span>
+                      <span className="text-xs text-muted-foreground/50">{msg.timestamp}</span>
+                    </div>
+
+                    {/* Bubble */}
+                    <div className={`rounded-2xl px-4 py-3 text-sm leading-relaxed ${
+                      msg.role === "user"
+                        ? "bg-primary/15 text-foreground rounded-tr-md"
+                        : "bg-card border border-border/50 text-foreground rounded-tl-md shadow-sm"
+                    }`}>
+                      <p className="whitespace-pre-wrap">{msg.content}</p>
+                    </div>
+
+                    {/* Message Actions (hover) */}
+                    {hoveredMessageId === msg.id && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 4 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className={`flex items-center gap-1 mt-2 ${msg.role === "user" ? "justify-end" : ""}`}
+                      >
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => copyMessage(msg.content)}>
+                                <Copy className="h-3.5 w-3.5" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>复制</TooltipContent>
+                          </Tooltip>
+
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-7 w-7">
+                                <RotateCcw className="h-3.5 w-3.5" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>重新生成</TooltipContent>
+                          </Tooltip>
+
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-7 w-7">
+                                <ThumbsUp className="h-3.5 w-3.5" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>有用</TooltipContent>
+                          </Tooltip>
+
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-7 w-7">
+                                <ThumbsDown className="h-3.5 w-3.5" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>无用</TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </motion.div>
+                    )}
+                  </div>
+                </motion.div>
+              ))}
+            </AnimatePresence>
+            <div ref={messagesEndRef} />
           </div>
-        </div>
+        </ScrollArea>
 
-        {/* Input */}
-        <div className="px-4 pb-4 pt-2">
-          <form onSubmit={(e) => { e.preventDefault(); handleSend(); }} className="flex items-center gap-2 p-2 rounded-xl bg-secondary/40 border border-border/50 focus-within:border-primary/30 transition-colors">
-            <Button type="button" variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground h-8 w-8 flex-shrink-0">
-              <Paperclip className="h-4 w-4" />
-            </Button>
-            <Input
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder={`向 ${agent.name} 提问...`}
-              className="flex-1 border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 h-8 text-sm"
-            />
-            <Button type="submit" size="icon" disabled={!input.trim()} className="h-8 w-8 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-30 flex-shrink-0">
-              <Send className="h-4 w-4" />
-            </Button>
-          </form>
+        {/* 快捷命令 */}
+        {currentAgent?.quickCommands && currentAgent.quickCommands.length > 0 && (
+          <div className="px-6 pb-2">
+            <div className="max-w-3xl mx-auto">
+              <div className="flex flex-wrap gap-2">
+                {currentAgent.quickCommands.map((cmd) => (
+                  <button
+                    key={cmd}
+                    onClick={() => handleSend(cmd)}
+                    className="text-xs px-3 py-1.5 rounded-full bg-secondary/50 border border-border/50 text-muted-foreground hover:text-primary hover:border-primary/30 transition-all hover:bg-primary/5"
+                  >
+                    {cmd}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 追问建议 */}
+        {followUpSuggestions.length > 0 && messages.length > 0 && (
+          <div className="px-6 pb-2">
+            <div className="max-w-3xl mx-auto">
+              <div className="flex items-center gap-2 mb-2">
+                <Brain className="h-3.5 w-3.5 text-muted-foreground" />
+                <span className="text-xs text-muted-foreground">推荐追问</span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {followUpSuggestions.map((suggestion, i) => (
+                  <button
+                    key={i}
+                    onClick={() => handleSend(suggestion)}
+                    className="text-xs px-3 py-1.5 rounded-lg bg-card border border-border/50 text-foreground hover:border-primary/30 hover:bg-primary/5 transition-all text-left max-w-[200px]"
+                  >
+                    {suggestion}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 输入框 */}
+        <div className="px-6 pb-4 pt-2">
+          <div className="max-w-3xl mx-auto">
+            <div className="flex items-center gap-2 p-2 rounded-xl bg-card border border-border/50 shadow-lg focus-within:border-primary/30 focus-within:shadow-primary/10 transition-all">
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button type="button" variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground h-9 w-9 flex-shrink-0">
+                      <Paperclip className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>添加附件</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+
+              <Input
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSend();
+                  }
+                }}
+                placeholder={`向 ${currentAgent?.name} 提问... (Shift+Enter 换行)`}
+                className="flex-1 border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 h-auto text-sm"
+              />
+
+              <Button
+                onClick={() => handleSend()}
+                disabled={!input.trim()}
+                className="h-9 w-9 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-30 flex-shrink-0"
+              >
+                <Send className="h-4 w-4" />
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground text-center mt-2">
+              AI 生成内容可能不准确，请核实重要信息
+            </p>
+          </div>
         </div>
       </div>
+
+      {/* 右侧详情面板 */}
+      <AnimatePresence>
+        {showRightPanel && (
+          <motion.div
+            initial={{ width: 0, opacity: 0 }}
+            animate={{ width: 280, opacity: 1 }}
+            exit={{ width: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="border-l border-border/50 bg-card/30 flex-shrink-0 hidden lg:block overflow-hidden"
+          >
+            <div className="h-full flex flex-col p-4">
+              {/* Agent 卡片 */}
+              <div className="mb-6">
+                <div className={`h-16 w-16 rounded-2xl bg-gradient-to-br ${currentAgent?.gradient} flex items-center justify-center text-4xl mx-auto mb-3 shadow-lg`}>
+                  {currentAgent?.emoji}
+                </div>
+                <h3 className="text-base font-semibold text-center text-foreground">{currentAgent?.name}</h3>
+                <p className="text-xs text-muted-foreground text-center mt-1">{currentAgent?.description}</p>
+
+                <div className="flex items-center justify-center gap-2 mt-3">
+                  <Badge variant="outline" className="text-xs">{currentAgent?.category}</Badge>
+                  <Badge variant="secondary" className="text-xs">{currentAgent?.type === "platform" ? "平台" : "我的"}</Badge>
+                </div>
+
+                {currentAgent?.expertise && (
+                  <div className="mt-4 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+                    <div className="flex items-start gap-2">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-500 flex-shrink-0 mt-0.5" />
+                      <p className="text-xs text-emerald-600 dark:text-emerald-400">{currentAgent.expertise}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <Separator className="my-4" />
+
+              {/* 能力标签 */}
+              {currentAgent?.capabilities && (
+                <div className="mb-6">
+                  <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">核心能力</h4>
+                  <div className="flex flex-wrap gap-1.5">
+                    {currentAgent.capabilities.map((cap, i) => (
+                      <Badge key={i} variant="secondary" className="text-xs">
+                        {cap}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <Separator className="my-4" />
+
+              {/* 推荐工具 */}
+              <div className="mb-6">
+                <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-2">
+                  <Wrench className="h-3.5 w-3.5" />
+                  推荐工具
+                </h4>
+                <div className="space-y-2">
+                  {recommendedTools.map((tool, i) => (
+                    <Button
+                      key={i}
+                      variant="ghost"
+                      size="sm"
+                      className="w-full justify-start gap-2 h-9 text-xs"
+                    >
+                      {tool.icon}
+                      {tool.label}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              <Separator className="my-4" />
+
+              {/* 统计信息 */}
+              <div>
+                <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-2">
+                  <TrendingUp className="h-3.5 w-3.5" />
+                  使用统计
+                </h4>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">总调用</span>
+                    <span className="text-xs font-medium text-foreground">{currentAgent?.calls?.toLocaleString() || 0}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">会话数</span>
+                    <span className="text-xs font-medium text-foreground">{sessions.filter(s => s.agentId === currentAgent?.id).length}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">最后使用</span>
+                    <span className="text-xs font-medium text-foreground">今天</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex-1" />
+
+              {/* 外部链接 */}
+              <Button variant="outline" size="sm" className="w-full gap-2 mt-4">
+                <ExternalLink className="h-3.5 w-3.5" />
+                查看文档
+              </Button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
