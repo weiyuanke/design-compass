@@ -72,15 +72,36 @@ const ChatPage = () => {
   const activeSession = sessions.find((s) => s.id === activeSessionId);
   const messages = activeSession?.messages || [];
 
+  // 如果没有有效的 agent，回到首页
+  if (selectedAgentId && !agent) {
+    console.error('Agent not found for:', selectedAgentId);
+    setSelectedAgentId('');
+    setActiveSessionId(null);
+  }
+
+  // 调试日志
+  useEffect(() => {
+    console.log('ChatPage Debug:', {
+      selectedAgentId,
+      activeSessionId,
+      hasAgent: !!agent,
+      agentName: agent?.name,
+      sessionsCount: sessions.length,
+      platformCount: platform.length,
+      mineCount: mine.length,
+    });
+  }, [selectedAgentId, activeSessionId, agent, sessions]);
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // 初始化：如果 URL 有 agent 参数且没有会话，创建会话
   useEffect(() => {
-    if (initialAgentId && agentLookup[initialAgentId] && sessions.length === 0) {
+    if (initialAgentId && agentLookup[initialAgentId] && !activeSessionId) {
       createSession(initialAgentId);
     }
-  }, []);
+  }, [initialAgentId]);
 
   const selectAgent = (agentId: string) => {
     setSelectedAgentId(agentId);
@@ -219,50 +240,36 @@ const ChatPage = () => {
     }, 800);
   };
 
-  // Landing: no agent selected
-  if (!agent || !activeSessionId) {
+  // Landing: no agent selected - Open WebUI Style
+  if (!activeSessionId) {
     return (
       <div className="flex flex-col h-[calc(100vh-3.5rem)] overflow-y-auto">
-        {/* Hero Section */}
-        <div className="bg-gradient-to-b from-primary/5 to-transparent px-6 py-12">
-          <div className="max-w-4xl mx-auto text-center space-y-4">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 text-primary text-sm font-medium"
-            >
-              <Brain className="h-4 w-4" />
-              <span>智能路由，自动匹配专家 Agent</span>
-            </motion.div>
-            <motion.h1
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-              className="text-3xl md:text-4xl font-bold text-foreground"
-            >
-              有什么可以帮你的？
-            </motion.h1>
-            <motion.p
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="text-muted-foreground text-sm md:text-base max-w-xl mx-auto"
-            >
-              输入问题，系统将自动为你匹配最合适的专家 Agent
-            </motion.p>
+        <div className="flex-1 flex flex-col items-center justify-center px-4 py-12">
+          {/* Welcome Message */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-center mb-8 max-w-3xl"
+          >
+            <h1 className="text-2xl md:text-3xl font-semibold text-foreground mb-2">
+              你好，今天有什么可以帮你的？
+            </h1>
+            <p className="text-muted-foreground text-sm">
+              与 Master Agent 对话，或通过 @Agent 调用专业 Agent
+            </p>
+          </motion.div>
 
-            {/* Smart Input Box */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
-              className="max-w-2xl mx-auto mt-8"
-            >
-              <div className="flex items-center gap-2 p-2 rounded-xl bg-card border border-border/50 shadow-lg shadow-primary/5 focus-within:border-primary/30 focus-within:shadow-primary/10 transition-all">
-                <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                  <Brain className="h-5 w-5 text-primary" />
-                </div>
+          {/* Input Box - Open WebUI Style */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="w-full max-w-3xl"
+          >
+            <div className="relative">
+              <div className="flex items-center gap-2 p-3 rounded-2xl bg-card border border-border/50 shadow-lg focus-within:border-primary/30 focus-within:shadow-xl focus-within:shadow-primary/5 transition-all">
                 <Input
+                  ref={inputRef}
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={(e) => {
@@ -271,14 +278,15 @@ const ChatPage = () => {
                       handleSmartSend();
                     }
                   }}
-                  placeholder="例如：帮我分析今日舆情、诊断集群问题、生成本周工作汇总..."
-                  className="flex-1 border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 h-auto text-sm"
+                  placeholder="输入你的问题..."
+                  className="flex-1 border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 h-auto text-base resize-none"
                   disabled={isRouting}
+                  autoFocus
                 />
                 <Button
                   onClick={handleSmartSend}
                   disabled={!input.trim() || isRouting}
-                  className="h-9 px-4 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-30 flex-shrink-0"
+                  className="h-9 w-9 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-30 flex-shrink-0"
                 >
                   {isRouting ? (
                     <motion.div
@@ -292,36 +300,59 @@ const ChatPage = () => {
                   )}
                 </Button>
               </div>
+            </div>
 
-              {/* Quick Suggestions */}
-              <div className="flex flex-wrap gap-2 mt-4 justify-center">
-                <Badge
-                  variant="outline"
-                  className="cursor-pointer hover:bg-primary/10 hover:border-primary/30 transition-colors py-2 px-3 text-xs"
-                  onClick={() => setInput("帮我分析今日舆情")}
-                >
-                  <Sparkles className="h-3 w-3 mr-1" />
-                  分析今日舆情
-                </Badge>
-                <Badge
-                  variant="outline"
-                  className="cursor-pointer hover:bg-primary/10 hover:border-primary/30 transition-colors py-2 px-3 text-xs"
-                  onClick={() => setInput("诊断集群问题")}
-                >
-                  <Zap className="h-3 w-3 mr-1" />
-                  诊断集群问题
-                </Badge>
-                <Badge
-                  variant="outline"
-                  className="cursor-pointer hover:bg-primary/10 hover:border-primary/30 transition-colors py-2 px-3 text-xs"
-                  onClick={() => setInput("生成本周工作汇总")}
-                >
-                  <MessageSquare className="h-3 w-3 mr-1" />
-                  生成工作汇总
-                </Badge>
-              </div>
-            </motion.div>
-          </div>
+            {/* Example Suggestions - Open WebUI Style */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 mt-6">
+              <motion.button
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+                onClick={() => setInput("帮我分析今日舆情")}
+                className="group flex items-center gap-3 p-3 rounded-xl bg-card border border-border/50 hover:border-primary/30 hover:shadow-md transition-all text-left"
+              >
+                <div className="h-8 w-8 rounded-lg bg-emerald-500/10 flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform">
+                  <Sparkles className="h-4 w-4 text-emerald-500" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-foreground truncate">分析今日舆情</p>
+                  <p className="text-xs text-muted-foreground truncate">实时监控 · 情绪分析</p>
+                </div>
+              </motion.button>
+
+              <motion.button
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.25 }}
+                onClick={() => setInput("诊断集群问题")}
+                className="group flex items-center gap-3 p-3 rounded-xl bg-card border border-border/50 hover:border-primary/30 hover:shadow-md transition-all text-left"
+              >
+                <div className="h-8 w-8 rounded-lg bg-blue-500/10 flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform">
+                  <Zap className="h-4 w-4 text-blue-500" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-foreground truncate">诊断集群问题</p>
+                  <p className="text-xs text-muted-foreground truncate">K8s · 故障排查</p>
+                </div>
+              </motion.button>
+
+              <motion.button
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+                onClick={() => setInput("生成本周工作汇总")}
+                className="group flex items-center gap-3 p-3 rounded-xl bg-card border border-border/50 hover:border-primary/30 hover:shadow-md transition-all text-left"
+              >
+                <div className="h-8 w-8 rounded-lg bg-purple-500/10 flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform">
+                  <MessageSquare className="h-4 w-4 text-purple-500" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-foreground truncate">生成工作汇总</p>
+                  <p className="text-xs text-muted-foreground truncate">周报 · 项目管理</p>
+                </div>
+              </motion.button>
+            </div>
+          </motion.div>
         </div>
 
         {/* Agent Grid */}
