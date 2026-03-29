@@ -23,18 +23,62 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 
-const mainNav = [
+// Core navigation - main user-facing features
+const coreNav = [
   { title: "首页", url: "/", icon: Home },
   { title: "对话", url: "/chat", icon: MessageSquare },
+];
+
+// Agent-related features
+const agentNav = [
   { title: "平台 Agent", url: "/tools", icon: Wrench },
-  { title: "MCP Server", url: "/mcp", icon: Server },
-  { title: "Skill 市场", url: "/skills", icon: Puzzle },
   { title: "我的 Agent", url: "/my-agents", icon: Bot },
 ];
 
+// Extension ecosystem - MCP and Skills
+const extensionNav = [
+  { title: "MCP Server", url: "/mcp", icon: Server },
+  { title: "Skill 市场", url: "/skills", icon: Puzzle },
+];
+
+// Admin/Management features
 const adminNav = [
   { title: "监控概览", url: "/monitor", icon: Activity },
 ];
+
+interface NavItem {
+  title: string;
+  url: string;
+  icon: React.ComponentType<{ className?: string }>;
+}
+
+function NavSection({
+  items,
+  collapsed,
+}: {
+  items: NavItem[];
+  collapsed: boolean;
+}) {
+  return (
+    <SidebarMenu>
+      {items.map((item) => (
+        <SidebarMenuItem key={item.title}>
+          <SidebarMenuButton asChild>
+            <NavLink
+              to={item.url}
+              end={item.url === "/"}
+              className="hover:bg-secondary/50 text-muted-foreground transition-colors"
+              activeClassName="bg-primary/10 text-primary font-medium"
+            >
+              <item.icon className="mr-2 h-4 w-4" />
+              {!collapsed && <span>{item.title}</span>}
+            </NavLink>
+          </SidebarMenuButton>
+        </SidebarMenuItem>
+      ))}
+    </SidebarMenu>
+  );
+}
 
 export function AppSidebar() {
   const { state } = useSidebar();
@@ -61,52 +105,43 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent>
+        {/* Core Features */}
         <SidebarGroup>
           <SidebarGroupLabel className="text-muted-foreground/60 text-xs uppercase tracking-wider">
-            导航
+            核心功能
           </SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu>
-              {mainNav.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                    <NavLink
-                      to={item.url}
-                      end={item.url === "/"}
-                      className="hover:bg-secondary/50 text-muted-foreground transition-colors"
-                      activeClassName="bg-primary/10 text-primary font-medium"
-                    >
-                      <item.icon className="mr-2 h-4 w-4" />
-                      {!collapsed && <span>{item.title}</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
+            <NavSection items={coreNav} collapsed={collapsed} />
           </SidebarGroupContent>
         </SidebarGroup>
 
+        {/* Agent Center */}
+        <SidebarGroup>
+          <SidebarGroupLabel className="text-muted-foreground/60 text-xs uppercase tracking-wider">
+            Agent 中心
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            <NavSection items={agentNav} collapsed={collapsed} />
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        {/* Extension Ecosystem */}
+        <SidebarGroup>
+          <SidebarGroupLabel className="text-muted-foreground/60 text-xs uppercase tracking-wider">
+            扩展生态
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            <NavSection items={extensionNav} collapsed={collapsed} />
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        {/* Admin */}
         <SidebarGroup>
           <SidebarGroupLabel className="text-muted-foreground/60 text-xs uppercase tracking-wider">
             管理
           </SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu>
-              {adminNav.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                    <NavLink
-                      to={item.url}
-                      className="hover:bg-secondary/50 text-muted-foreground transition-colors"
-                      activeClassName="bg-primary/10 text-primary font-medium"
-                    >
-                      <item.icon className="mr-2 h-4 w-4" />
-                      {!collapsed && <span>{item.title}</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
+            <NavSection items={adminNav} collapsed={collapsed} />
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
