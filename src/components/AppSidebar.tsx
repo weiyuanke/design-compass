@@ -13,7 +13,7 @@ import {
   Library,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   Sidebar,
   SidebarContent,
@@ -98,10 +98,16 @@ export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const location = useLocation();
+  const navigate = useNavigate();
   const currentPath = location.pathname;
 
   const isActive = (path: string) =>
     path === "/" ? currentPath === "/" : currentPath.startsWith(path);
+
+  // Handle chat navigation to clear query params
+  const handleChatNav = () => {
+    navigate("/chat", { replace: true });
+  };
 
   return (
     <Sidebar collapsible="icon" className="border-r border-border/50">
@@ -125,7 +131,33 @@ export function AppSidebar() {
             工作台
           </SidebarGroupLabel>
           <SidebarGroupContent>
-            <NavSection items={workbenchNav} collapsed={collapsed} />
+            <SidebarMenu>
+              {workbenchNav.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton asChild>
+                    {item.url === "/chat" ? (
+                      <button
+                        onClick={handleChatNav}
+                        className="flex items-center w-full hover:bg-secondary/50 text-muted-foreground transition-colors"
+                      >
+                        <item.icon className="mr-2 h-4 w-4" />
+                        {!collapsed && <span>{item.title}</span>}
+                      </button>
+                    ) : (
+                      <NavLink
+                        to={item.url}
+                        end={item.url === "/"}
+                        className="hover:bg-secondary/50 text-muted-foreground transition-colors"
+                        activeClassName="bg-primary/10 text-primary font-medium"
+                      >
+                        <item.icon className="mr-2 h-4 w-4" />
+                        {!collapsed && <span>{item.title}</span>}
+                      </NavLink>
+                    )}
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
 
