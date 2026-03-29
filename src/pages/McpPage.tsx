@@ -25,7 +25,7 @@ const McpPage = () => {
   );
 
   return (
-    <div className="p-6 lg:p-8 max-w-5xl mx-auto space-y-6">
+    <div className="p-6 lg:p-8 max-w-full space-y-6">
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
         <h1 className="text-2xl font-bold text-foreground">MCP Server</h1>
         <p className="text-sm text-muted-foreground mt-1">
