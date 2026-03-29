@@ -34,7 +34,7 @@ const SettingsPage = () => {
   ];
 
   return (
-    <div className="p-6 lg:p-8 max-w-2xl mx-auto space-y-8">
+    <div className="p-6 lg:p-8 max-w-3xl space-y-8">
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
         <h1 className="text-2xl font-bold text-foreground">用户设置</h1>
         <p className="text-sm text-muted-foreground mt-1">管理你的个人信息</p>

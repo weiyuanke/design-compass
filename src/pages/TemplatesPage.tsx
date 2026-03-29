@@ -15,7 +15,7 @@ const TemplatesPage = () => {
   const navigate = useNavigate();
 
   return (
-    <div className="p-6 lg:p-8 max-w-5xl mx-auto space-y-8">
+    <div className="p-6 lg:p-8 max-w-full space-y-8">
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-2">
         <h1 className="text-2xl font-bold">Agent 模版</h1>
         <p className="text-muted-foreground text-sm">选择一个模版，快速创建你的专属 Agent</p>

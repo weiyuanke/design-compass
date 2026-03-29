@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Search, Plus, ExternalLink, Circle } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -15,6 +16,7 @@ const statusMap = {
 
 const McpPage = () => {
   const [search, setSearch] = useState("");
+  const navigate = useNavigate();
 
   const filteredPlatform = platformMcpServers.filter(
     (s) => s.name.toLowerCase().includes(search.toLowerCase()) || s.description.includes(search) || s.category.includes(search)
@@ -25,7 +27,7 @@ const McpPage = () => {
   );
 
   return (
-    <div className="p-6 lg:p-8 max-w-5xl mx-auto space-y-6">
+    <div className="p-6 lg:p-8 max-w-full space-y-6">
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
         <h1 className="text-2xl font-bold text-foreground">MCP Server</h1>
         <p className="text-sm text-muted-foreground mt-1">
@@ -93,7 +95,7 @@ const McpPage = () => {
 
         <TabsContent value="user" className="space-y-4">
           <div className="flex justify-end">
-            <Button size="sm" className="gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90">
+            <Button size="sm" className="gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => navigate("/mcp/deploy")}>
               <Plus className="h-4 w-4" />
               部署新 MCP
             </Button>

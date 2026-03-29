@@ -16,7 +16,7 @@ const HomePage = () => {
   const navigate = useNavigate();
 
   return (
-    <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-8">
+    <div className="p-6 lg:p-8 max-w-full space-y-8">
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="space-y-2">
         <h1 className="text-3xl font-bold tracking-tight">
           欢迎回来，<span className="text-gradient-primary">张三</span>
