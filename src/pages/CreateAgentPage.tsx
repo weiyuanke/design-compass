@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, ArrowRight, Check, MessageSquare, Code2, Bot, Settings, Server, Brain, Database, Puzzle, Clock } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, MessageSquare, Code2, Bot, Settings, Server, Brain, Database, Puzzle, Clock, ExternalLink, Sparkles, Zap, Shield, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -19,37 +19,52 @@ const templateOptions = [
     desc: "自主 AI 智能体框架，将被动聊天机器人转变为主动执行复杂工作流的数字员工",
     features: ["本地优先架构", "ReAct 智能循环", "持久化记忆", "ClawHub 技能市场", "心跳层定时任务"],
     gradient: "from-emerald-500/20 to-teal-500/5",
-    color: "text-emerald-500"
+    color: "text-emerald-500",
+    badge: "热门",
+    badgeColor: "bg-emerald-500",
+    difficulty: "进阶",
+    deployTime: "5-10 分钟",
   },
   {
     id: "codeagent",
     name: "Code Agent",
     emoji: "💻",
     icon: Code2,
-    desc: "部署自己的编码 Agent",
+    desc: "部署自己的编码 Agent，在线提需求自动写代码",
     features: ["在线提需求", "自动改代码", "提交 PR", "代码审查"],
     gradient: "from-blue-500/20 to-indigo-500/5",
-    color: "text-blue-500"
+    color: "text-blue-500",
+    badge: "推荐",
+    badgeColor: "bg-blue-500",
+    difficulty: "简单",
+    deployTime: "3-5 分钟",
   },
   {
     id: "chatbot",
     name: "Chat Bot",
     emoji: "🤖",
     icon: Bot,
-    desc: "部署自己的聊天机器人",
+    desc: "部署自己的聊天机器人，支持多渠道接入",
     features: ["多轮对话", "知识库", "自定义人设", "多渠道接入"],
     gradient: "from-purple-500/20 to-pink-500/5",
-    color: "text-purple-500"
+    color: "text-purple-500",
+    badge: null,
+    difficulty: "入门",
+    deployTime: "2-3 分钟",
   },
   {
     id: "custom",
     name: "自定义 Agent",
     emoji: "⚙️",
     icon: Settings,
-    desc: "完全自定义的 Agent",
+    desc: "完全自定义的 Agent，灵活配置所有参数",
     features: ["自定义工具", "Skill 集成", "系统提示词", "知识库 + 大模型"],
     gradient: "from-amber-500/20 to-orange-500/5",
-    color: "text-amber-500"
+    color: "text-amber-500",
+    badge: "灵活",
+    badgeColor: "bg-amber-500",
+    difficulty: "专家",
+    deployTime: "10-30 分钟",
   },
 ];
 
@@ -122,42 +137,106 @@ const CreateAgentPage = () => {
       <AnimatePresence mode="wait">
         {/* Step 0: Select template */}
         {step === 0 && (
-          <motion.div key="step0" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-4">
-            <p className="text-muted-foreground text-sm">选择一个模版作为起点</p>
+          <motion.div key="step0" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-4">
+            <div className="flex items-center justify-between">
+              <p className="text-muted-foreground text-sm">选择一个模版作为起点</p>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Zap className="h-3.5 w-3.5" />
+                <span>快速部署 · 自托管 · 数据隔离</span>
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {templateOptions.map((tpl) => {
+              {templateOptions.map((tpl, index) => {
                 const Icon = tpl.icon;
+                const isSelected = selectedTemplate === tpl.id;
+
                 return (
-                  <Card
+                  <motion.div
                     key={tpl.id}
-                    className={`group cursor-pointer transition-all duration-300 ${
-                      selectedTemplate === tpl.id
-                        ? "border-primary/50 shadow-lg shadow-primary/5"
-                        : "border-border/50 hover:border-primary/30"
-                    }`}
-                    onClick={() => setSelectedTemplate(tpl.id)}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.05 }}
                   >
-                    <CardHeader className="pb-3">
-                      <div className="flex items-start gap-3">
-                        <div className={`h-12 w-12 rounded-xl bg-gradient-to-br ${tpl.gradient} flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform`}>
-                          <Icon className={`h-6 w-6 ${tpl.color}`} />
+                    <Card
+                      className={`group cursor-pointer transition-all duration-300 overflow-hidden ${
+                        isSelected
+                          ? "border-primary/50 shadow-xl shadow-primary/5 ring-2 ring-primary/20"
+                          : "border-border/50 hover:border-primary/30 hover:shadow-lg"
+                      }`}
+                      onClick={() => setSelectedTemplate(tpl.id)}
+                    >
+                      {/* Top gradient bar */}
+                      <div className={`h-1 w-full bg-gradient-to-r ${tpl.gradient}`} />
+
+                      <CardHeader className="pb-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-start gap-3 flex-1">
+                            <div className={`h-14 w-14 rounded-xl bg-gradient-to-br ${tpl.gradient} flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform duration-300 shadow-md`}>
+                              <span className="text-2xl mr-0.5">{tpl.emoji}</span>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <CardTitle className="text-base font-semibold">{tpl.name}</CardTitle>
+                                {tpl.badge && (
+                                  <Badge className={`${tpl.badgeColor} text-white text-xs h-5 px-2`}>
+                                    {tpl.badge}
+                                  </Badge>
+                                )}
+                              </div>
+                              <CardDescription className="text-xs mt-1 line-clamp-2">{tpl.desc}</CardDescription>
+                            </div>
+                          </div>
                         </div>
-                        <div className="flex-1">
-                          <CardTitle className="text-base">{tpl.name}</CardTitle>
-                          <CardDescription className="text-xs mt-1">{tpl.desc}</CardDescription>
+                      </CardHeader>
+
+                      <CardContent className="space-y-3">
+                        {/* Meta info */}
+                        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                          <div className="flex items-center gap-1">
+                            <Shield className="h-3 w-3" />
+                            <span>{tpl.difficulty}</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            <span>{tpl.deployTime}</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <TrendingUp className="h-3 w-3" />
+                            <span>自托管</span>
+                          </div>
                         </div>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="grid grid-cols-2 gap-2">
-                        {tpl.features.map((feature) => (
-                          <Badge key={feature} variant="secondary" className="text-xs justify-start">
-                            {feature}
-                          </Badge>
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
+
+                        {/* Features */}
+                        <div className="flex flex-wrap gap-1.5">
+                          {tpl.features.slice(0, 4).map((feature) => (
+                            <Badge key={feature} variant="secondary" className="text-xs h-6">
+                              {feature}
+                            </Badge>
+                          ))}
+                          {tpl.features.length > 4 && (
+                            <Badge variant="outline" className="text-xs h-6">
+                              +{tpl.features.length - 4}
+                            </Badge>
+                          )}
+                        </div>
+
+                        {/* Selected indicator */}
+                        {isSelected && (
+                          <motion.div
+                            initial={{ opacity: 0, y: 8 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="flex items-center gap-2 pt-2 border-t border-border/50"
+                          >
+                            <div className="h-5 w-5 rounded-full bg-primary flex items-center justify-center">
+                              <Check className="h-3 w-3 text-primary-foreground" />
+                            </div>
+                            <span className="text-xs font-medium text-primary">已选择</span>
+                          </motion.div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </motion.div>
                 );
               })}
             </div>
