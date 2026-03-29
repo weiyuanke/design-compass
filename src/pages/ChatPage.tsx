@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Send, Paperclip, Bot, User, Plus, ChevronDown, MessageSquare } from "lucide-react";
+import { Send, Paperclip, Bot, User, Plus, ChevronDown, MessageSquare, Sparkles, Zap, Shield, TrendingUp } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -125,58 +125,124 @@ const ChatPage = () => {
   // Landing: no agent selected
   if (!agent || !activeSessionId) {
     return (
-      <div className="flex flex-col items-center justify-center h-[calc(100vh-3.5rem)] px-4">
-        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="text-center space-y-6 max-w-lg">
-          <div className="h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto">
-            <MessageSquare className="h-8 w-8 text-primary" />
+      <div className="flex flex-col h-[calc(100vh-3.5rem)] overflow-y-auto">
+        {/* Hero Section */}
+        <div className="bg-gradient-to-b from-primary/5 to-transparent px-6 py-12">
+          <div className="max-w-4xl mx-auto text-center space-y-4">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 text-primary text-sm font-medium"
+            >
+              <Sparkles className="h-4 w-4" />
+              <span>智能助手，随时待命</span>
+            </motion.div>
+            <motion.h1
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              className="text-3xl md:text-4xl font-bold text-foreground"
+            >
+              选择一个专业 Agent<br className="md:hidden" />开始智能对话
+            </motion.h1>
+            <motion.p
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="text-muted-foreground text-sm md:text-base max-w-xl mx-auto"
+            >
+              从投研分析到运维监控，从项目管理到行政支持，专业 Agent 团队为你服务
+            </motion.p>
           </div>
-          <div>
-            <h2 className="text-xl font-semibold text-foreground">开始新对话</h2>
-            <p className="text-sm text-muted-foreground mt-2">选择一个 Agent 开始交互</p>
-          </div>
+        </div>
 
-          {/* Platform agents */}
-          <div className="text-left space-y-3">
-            <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">平台 Agent</h3>
-            <div className="grid grid-cols-2 gap-3">
-              {platform.map((a) => (
-                <button
-                  key={a.id}
-                  onClick={() => selectAgent(a.id)}
-                  className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border/50 hover:border-primary/30 hover:bg-primary/5 transition-all text-left"
-                >
-                  <span className="text-xl">{a.emoji}</span>
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-foreground truncate">{a.name}</p>
-                    <p className="text-xs text-muted-foreground truncate">{a.description}</p>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* My agents */}
-          {mine.length > 0 && (
-            <div className="text-left space-y-3">
-              <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">我的 Agent</h3>
-              <div className="grid grid-cols-2 gap-3">
-                {mine.map((a) => (
-                  <button
+        {/* Agent Grid */}
+        <div className="flex-1 px-6 py-8">
+          <div className="max-w-6xl mx-auto space-y-8">
+            {/* Platform Agents */}
+            <div>
+              <div className="flex items-center gap-2 mb-4">
+                <Zap className="h-5 w-5 text-primary" />
+                <h2 className="text-lg font-semibold text-foreground">平台 Agent</h2>
+                <Badge variant="secondary" className="ml-2">{platform.length} 个可用</Badge>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {platform.map((a, i) => (
+                  <motion.button
                     key={a.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: i * 0.05 }}
                     onClick={() => selectAgent(a.id)}
-                    className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border/50 hover:border-accent/30 hover:bg-accent/5 transition-all text-left"
+                    className="group text-left p-5 rounded-2xl bg-card border border-border/50 hover:border-primary/50 hover:shadow-xl hover:shadow-primary/5 transition-all duration-300"
                   >
-                    <span className="text-xl">{a.emoji}</span>
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-foreground truncate">{a.name}</p>
-                      <p className="text-xs text-muted-foreground truncate">{a.description}</p>
+                    <div className="flex items-start gap-4 mb-3">
+                      <div className={`h-14 w-14 rounded-xl bg-gradient-to-br ${a.gradient} flex items-center justify-center text-3xl flex-shrink-0 group-hover:scale-110 transition-transform duration-300`}>
+                        {a.emoji}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-semibold text-foreground truncate group-hover:text-primary transition-colors">{a.name}</h3>
+                        <div className="flex items-center gap-2 mt-1">
+                          <Badge variant="outline" className="text-xs">{a.category}</Badge>
+                          <span className="text-xs text-muted-foreground">{(a.calls / 1000).toFixed(1)}k 次调用</span>
+                        </div>
+                      </div>
                     </div>
-                  </button>
+                    <p className="text-xs text-muted-foreground line-clamp-2 mb-3 h-8">{a.description}</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {a.capabilities?.slice(0, 3).map((cap) => (
+                        <span key={cap} className="text-xs px-2 py-1 rounded-md bg-secondary/50 text-secondary-foreground">
+                          {cap}
+                        </span>
+                      ))}
+                    </div>
+                    {a.expertise && (
+                      <div className="mt-3 pt-3 border-t border-border/50">
+                        <p className="text-xs text-emerald-500 flex items-center gap-1">
+                          <Shield className="h-3 w-3" />
+                          {a.expertise}
+                        </p>
+                      </div>
+                    )}
+                  </motion.button>
                 ))}
               </div>
             </div>
-          )}
-        </motion.div>
+
+            {/* My Agents */}
+            {mine.length > 0 && (
+              <div>
+                <div className="flex items-center gap-2 mb-4">
+                  <TrendingUp className="h-5 w-5 text-accent" />
+                  <h2 className="text-lg font-semibold text-foreground">我的 Agent</h2>
+                  <Badge variant="secondary" className="ml-2">{mine.length} 个可用</Badge>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {mine.map((a, i) => (
+                    <motion.button
+                      key={a.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: i * 0.05 }}
+                      onClick={() => selectAgent(a.id)}
+                      className="group text-left p-5 rounded-2xl bg-card border border-border/50 hover:border-accent/50 hover:shadow-xl hover:shadow-accent/5 transition-all duration-300"
+                    >
+                      <div className="flex items-start gap-4">
+                        <div className="h-14 w-14 rounded-xl bg-gradient-to-br from-accent/20 to-accent/5 flex items-center justify-center text-3xl flex-shrink-0 group-hover:scale-110 transition-transform duration-300">
+                          {a.emoji}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-semibold text-foreground truncate group-hover:text-accent transition-colors">{a.name}</h3>
+                          <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{a.description}</p>
+                        </div>
+                      </div>
+                    </motion.button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     );
   }
@@ -246,17 +312,26 @@ const ChatPage = () => {
       {/* Chat area */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-border/50">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border/50 bg-card/50 backdrop-blur">
           <div className="flex items-center gap-3">
-            <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center text-lg">{agent.emoji}</div>
+            <div className={`h-10 w-10 rounded-xl bg-gradient-to-br ${agent.gradient || 'from-primary/20 to-primary/5'} flex items-center justify-center text-xl flex-shrink-0`}>
+              {agent.emoji}
+            </div>
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-sm font-semibold text-foreground">{agent.name}</h2>
                 <Badge variant="secondary" className="text-xs">{agent.type === "platform" ? "平台" : "我的"}</Badge>
               </div>
-              <span className="text-xs text-emerald-500 flex items-center gap-1">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> 在线
-              </span>
+              <div className="flex items-center gap-2 mt-0.5">
+                <span className="text-xs text-emerald-500 flex items-center gap-1">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> 在线
+                </span>
+                {agent.capabilities && (
+                  <span className="text-xs text-muted-foreground hidden lg:inline">
+                    · {agent.capabilities.slice(0, 3).join(" · ")}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
 
@@ -301,10 +376,10 @@ const ChatPage = () => {
                 animate={{ opacity: 1, y: 0 }}
                 className={`flex gap-3 ${msg.role === "user" ? "flex-row-reverse" : ""}`}
               >
-                <div className={`h-8 w-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                <div className={`h-9 w-9 rounded-xl flex items-center justify-center flex-shrink-0 ${
                   msg.role === "user" ? "bg-accent/15 text-accent" : "bg-primary/10 text-primary"
                 }`}>
-                  {msg.role === "user" ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
+                  {msg.role === "user" ? <User className="h-5 w-5" /> : <Bot className="h-5 w-5" />}
                 </div>
                 <div className={`max-w-[75%] space-y-1 ${msg.role === "user" ? "items-end" : ""}`}>
                   <div className={`rounded-2xl px-4 py-3 text-sm leading-relaxed ${
@@ -323,7 +398,7 @@ const ChatPage = () => {
         {/* Quick commands */}
         <div className="px-4 pb-2">
           <div className="flex flex-wrap gap-2">
-            {agent.quickCommands.map((cmd) => (
+            {agent.quickCommands?.map((cmd) => (
               <button key={cmd} onClick={() => handleSend(cmd)} className="text-xs px-3 py-1.5 rounded-full bg-secondary/50 border border-border/50 text-muted-foreground hover:text-primary hover:border-primary/30 transition-all">
                 {cmd}
               </button>
