@@ -1,6 +1,9 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Search, MoreHorizontal, Play, Pause, Trash2, Settings, MessageSquare, Plus } from "lucide-react";
+import { 
+  Search, MoreHorizontal, Play, Pause, Trash2, Settings, MessageSquare, Plus,
+  Server, Shield, HardDrive, ExternalLink, Terminal, Power
+} from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -17,6 +20,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { useNavigate } from "react-router-dom";
 import { myAgents as initialAgents } from "@/data/agents";
@@ -33,25 +37,81 @@ const MyAgentsPage = () => {
     );
   };
 
+  const toggleVM = (id: string) => {
+    setAgents((prev) =>
+      prev.map((a) =>
+        a.id === id ? { 
+          ...a, 
+          vmStatus: a.vmStatus === "running" ? "stopped" : "running",
+          status: a.vmStatus === "running" ? "inactive" : "active"
+        } : a
+      )
+    );
+  };
+
   return (
     <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
-      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">我的 Agent</h1>
-          <p className="text-sm text-muted-foreground mt-1">管理你创建的所有 Agent 实例</p>
+      {/* Header with self-hosted highlight */}
+      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
+        <div className="flex items-center justify-between flex-wrap gap-4">
+          <div>
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl font-bold">我的 Agent</h1>
+              <Badge variant="outline" className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20">
+                <Shield className="h-3 w-3 mr-1" />
+                自托管
+              </Badge>
+            </div>
+            <p className="text-sm text-muted-foreground mt-2">
+              每个 Agent 独立部署在专属虚拟机，数据完全隔离，你拥有绝对控制权
+            </p>
+          </div>
+          <Button onClick={() => navigate("/create")} className="bg-primary text-primary-foreground hover:bg-primary/90">
+            <Plus className="h-4 w-4 mr-2" />
+            创建 Agent
+          </Button>
         </div>
-        <Button onClick={() => navigate("/create")} className="bg-primary text-primary-foreground hover:bg-primary/90">
-          <Plus className="h-4 w-4 mr-2" />
-          创建 Agent
-        </Button>
       </motion.div>
 
+      {/* Features highlight */}
+      <div className="grid gap-3 sm:grid-cols-3">
+        <div className="flex items-center gap-3 p-3 rounded-lg bg-emerald-500/5 border border-emerald-500/20">
+          <div className="h-10 w-10 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+            <Server className="h-5 w-5 text-emerald-500" />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-emerald-400">独立虚拟机部署</p>
+            <p className="text-xs text-emerald-500/70">每个 Agent 独占 VM 资源</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3 p-3 rounded-lg bg-blue-500/5 border border-blue-500/20">
+          <div className="h-10 w-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
+            <Shield className="h-5 w-5 text-blue-500" />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-blue-400">数据完全隔离</p>
+            <p className="text-xs text-blue-500/70">敏感数据不出 VM</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3 p-3 rounded-lg bg-purple-500/5 border border-purple-500/20">
+          <div className="h-10 w-10 rounded-lg bg-purple-500/10 flex items-center justify-center">
+            <Terminal className="h-5 w-5 text-purple-500" />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-purple-400">完全控制权</p>
+            <p className="text-xs text-purple-500/70">SSH 直连，任意配置</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Search */}
       <div className="relative max-w-md">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input placeholder="搜索我的 Agent..." className="pl-10 bg-secondary/50 border-border/50 h-10" />
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+      {/* Agent Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
         {agents.map((agent, i) => (
           <motion.div
             key={agent.id}
@@ -59,22 +119,83 @@ const MyAgentsPage = () => {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             transition={{ delay: i * 0.05 }}
           >
-            <Card className="group hover:shadow-lg transition-all duration-300 border-border/50 hover:border-primary/50 bg-card">
+            <Card className="group hover:shadow-xl transition-all duration-300 border-border/50 hover:border-primary/30 bg-card overflow-hidden">
+              {/* VM Status Bar */}
+              <div className={`h-1 w-full ${
+                agent.vmStatus === "running" 
+                  ? "bg-gradient-to-r from-emerald-500 to-emerald-400" 
+                  : agent.vmStatus === "stopped"
+                  ? "bg-gradient-to-r from-muted to-muted"
+                  : "bg-gradient-to-r from-amber-500 to-amber-400"
+              }`} />
+              
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
-                  <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center text-2xl flex-shrink-0 group-hover:scale-110 transition-transform">
-                    {agent.emoji}
+                  <div className="flex items-center gap-3">
+                    <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center text-2xl flex-shrink-0 group-hover:scale-110 transition-transform">
+                      {agent.emoji}
+                    </div>
+                    <div>
+                      <CardTitle className="text-lg font-semibold text-foreground">{agent.name}</CardTitle>
+                      <div className="flex items-center gap-2 mt-1">
+                        <Badge variant={agent.status === "active" ? "default" : "secondary"} className={`text-xs h-5 ${
+                          agent.status === "active" 
+                            ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/20" 
+                            : "bg-muted text-muted-foreground"
+                        }`}>
+                          {agent.status === "active" ? "运行中" : "已停止"}
+                        </Badge>
+                        <Badge variant="outline" className="text-xs h-5">
+                          {agent.template}
+                        </Badge>
+                      </div>
+                    </div>
                   </div>
-                  <Badge variant={agent.status === "active" ? "default" : "secondary"} className={`text-xs ${agent.status === "active" ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/20" : "bg-muted text-muted-foreground"}`}>
-                    {agent.status === "active" ? "运行中" : "已停止"}
-                  </Badge>
                 </div>
-                <CardTitle className="text-lg font-semibold mt-3 text-foreground">{agent.name}</CardTitle>
-                <CardDescription className="text-muted-foreground text-xs">
-                  模版：{agent.template}
-                </CardDescription>
               </CardHeader>
-              <CardContent className="pb-3">
+              
+              <CardContent className="pb-3 space-y-3">
+                {/* VM Info */}
+                <div className="p-3 rounded-lg bg-secondary/30 border border-border/50 space-y-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground flex items-center gap-1">
+                      <Server className="h-3 w-3" />
+                      虚拟机 ID
+                    </span>
+                    <code className="text-foreground font-mono">{agent.vmId}</code>
+                  </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground flex items-center gap-1">
+                      <Power className="h-3 w-3" />
+                      VM 状态
+                    </span>
+                    <span className={
+                      agent.vmStatus === "running" ? "text-emerald-500" :
+                      agent.vmStatus === "stopped" ? "text-muted-foreground" :
+                      "text-amber-500"
+                    }>
+                      {agent.vmStatus === "running" ? "● 运行中" :
+                       agent.vmStatus === "stopped" ? "● 已停止" :
+                       "● 部署中"}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground flex items-center gap-1">
+                      <HardDrive className="h-3 w-3" />
+                      数据存储
+                    </span>
+                    <span className="text-foreground">{agent.dataLocation}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground flex items-center gap-1">
+                      <Shield className="h-3 w-3" />
+                      部署区域
+                    </span>
+                    <span className="text-foreground">{agent.vmRegion}</span>
+                  </div>
+                </div>
+
+                {/* Stats */}
                 <div className="flex items-center gap-4 text-xs text-muted-foreground">
                   <div className="flex items-center gap-1">
                     <div className="h-1.5 w-1.5 rounded-full bg-primary" />
@@ -82,10 +203,11 @@ const MyAgentsPage = () => {
                   </div>
                   <div className="flex items-center gap-1">
                     <div className="h-1.5 w-1.5 rounded-full bg-muted-foreground/30" />
-                    <span>{agent.created}</span>
+                    <span>创建于 {agent.created}</span>
                   </div>
                 </div>
               </CardContent>
+              
               <CardFooter className="pt-0 flex items-center justify-between gap-2">
                 <Button
                   variant="outline"
@@ -102,14 +224,26 @@ const MyAgentsPage = () => {
                       <MoreHorizontal className="h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="bg-card border-border">
-                    <DropdownMenuItem onClick={() => toggleStatus(agent.id)} className="gap-2">
-                      {agent.status === "active" ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
-                      {agent.status === "active" ? "停止" : "启动"}
+                  <DropdownMenuContent align="end" className="bg-card border-border w-48">
+                    <DropdownMenuItem onClick={() => toggleVM(agent.id)} className="gap-2">
+                      {agent.vmStatus === "running" ? (
+                        <Pause className="h-3.5 w-3.5" />
+                      ) : (
+                        <Play className="h-3.5 w-3.5" />
+                      )}
+                      {agent.vmStatus === "running" ? "停止 VM" : "启动 VM"}
                     </DropdownMenuItem>
                     <DropdownMenuItem className="gap-2">
+                      <Terminal className="h-3.5 w-3.5" /> SSH 连接
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => navigate(`/agent/${agent.id}/settings`)} className="gap-2">
                       <Settings className="h-3.5 w-3.5" /> 配置
                     </DropdownMenuItem>
+                    <DropdownMenuItem className="gap-2">
+                      <ExternalLink className="h-3.5 w-3.5" /> 访问 VM
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
                     <DropdownMenuItem className="gap-2 text-destructive">
                       <Trash2 className="h-3.5 w-3.5" /> 删除
                     </DropdownMenuItem>
@@ -120,6 +254,21 @@ const MyAgentsPage = () => {
           </motion.div>
         ))}
       </div>
+
+      {/* Empty state */}
+      {agents.length === 0 && (
+        <div className="text-center py-12">
+          <div className="text-4xl mb-4">🔒</div>
+          <h3 className="text-lg font-semibold mb-2">还没有自托管 Agent</h3>
+          <p className="text-muted-foreground mb-4">
+            创建第一个 Agent，享受完全的数据隔离和控制权
+          </p>
+          <Button onClick={() => navigate("/create")}>
+            <Plus className="h-4 w-4 mr-2" />
+            创建 Agent
+          </Button>
+        </div>
+      )}
     </div>
   );
 };
