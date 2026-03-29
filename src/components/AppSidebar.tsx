@@ -104,11 +104,6 @@ export function AppSidebar() {
   const isActive = (path: string) =>
     path === "/" ? currentPath === "/" : currentPath.startsWith(path);
 
-  // Handle chat navigation to clear query params
-  const handleChatNav = () => {
-    navigate("/chat", { replace: true });
-  };
-
   return (
     <Sidebar collapsible="icon" className="border-r border-border/50">
       <SidebarHeader className="p-4">
@@ -135,25 +130,16 @@ export function AppSidebar() {
               {workbenchNav.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
-                    {item.url === "/chat" ? (
-                      <button
-                        onClick={handleChatNav}
-                        className="flex items-center w-full hover:bg-secondary/50 text-muted-foreground transition-colors"
-                      >
-                        <item.icon className="mr-2 h-4 w-4" />
-                        {!collapsed && <span>{item.title}</span>}
-                      </button>
-                    ) : (
-                      <NavLink
-                        to={item.url}
-                        end={item.url === "/"}
-                        className="hover:bg-secondary/50 text-muted-foreground transition-colors"
-                        activeClassName="bg-primary/10 text-primary font-medium"
-                      >
-                        <item.icon className="mr-2 h-4 w-4" />
-                        {!collapsed && <span>{item.title}</span>}
-                      </NavLink>
-                    )}
+                    <NavLink
+                      to={item.url}
+                      end={item.url === "/"}
+                      replace={item.url === "/chat"}
+                      className="hover:bg-secondary/50 text-muted-foreground transition-colors"
+                      activeClassName="bg-primary/10 text-primary font-medium"
+                    >
+                      <item.icon className="mr-2 h-4 w-4" />
+                      {!collapsed && <span>{item.title}</span>}
+                    </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
