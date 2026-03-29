@@ -31,14 +31,10 @@ export interface Template {
 
 // 平台内置 Agent（公共、开箱即用）
 export const platformAgents: PlatformAgent[] = [
-  { id: "translate", name: "智能翻译", emoji: "🌐", description: "支持多语言互译，自动识别语言并提供高质量翻译", category: "语言", calls: 12800, quickCommands: ["翻译成英文", "翻译成日文", "中英对照翻译"] },
-  { id: "crawler", name: "网页爬虫", emoji: "🕷️", description: "输入 URL 即可抓取网页内容，支持结构化数据提取", category: "数据", calls: 8920, quickCommands: ["抓取网页内容", "提取页面链接", "获取页面标题"] },
-  { id: "summary", name: "文档摘要", emoji: "📝", description: "上传文档或粘贴长文，快速生成结构化摘要", category: "效率", calls: 6540, quickCommands: ["生成摘要", "提取关键词", "列出要点"] },
-  { id: "code", name: "代码助手", emoji: "💻", description: "代码生成、审查、调试、重构，支持主流编程语言", category: "开发", calls: 15200, quickCommands: ["代码审查", "生成函数", "解释代码"] },
-  { id: "data", name: "数据分析", emoji: "📊", description: "上传数据文件，自动生成分析报告和可视化图表", category: "数据", calls: 4300, quickCommands: ["分析数据", "生成图表", "数据清洗"] },
-  { id: "image", name: "图片识别", emoji: "🖼️", description: "上传图片进行内容识别、OCR 文字提取", category: "视觉", calls: 7600, quickCommands: ["识别图片", "提取文字", "描述图片内容"] },
-  { id: "email", name: "邮件撰写", emoji: "✉️", description: "根据场景和要求自动生成专业邮件", category: "效率", calls: 3100, quickCommands: ["写商务邮件", "写感谢信", "写会议邀请"] },
-  { id: "sql", name: "SQL 生成器", emoji: "🗃️", description: "用自然语言描述需求，自动生成 SQL 查询语句", category: "开发", calls: 5800, quickCommands: ["生成查询语句", "优化 SQL", "解释 SQL"] },
+  { id: "k8s-ops", name: "Kubernetes 运维专家", emoji: "☸️", description: "Kubernetes 集群运维、故障诊断、性能优化、生成集群运行报告", category: "运维", calls: 8520, quickCommands: ["诊断集群问题", "查看 Pod 状态", "生成运维报告", "节点资源分析"] },
+  { id: "project-mgr", name: "项目管理助手", emoji: "📋", description: "Jira 操作、会议共识记录、需求管理、周报整理", category: "效率", calls: 12300, quickCommands: ["创建 Jira 需求", "整理会议共识", "生成本周工作汇总", "同步项目进度"] },
+  { id: "ask-support", name: "ASK 系统专家", emoji: "🖥️", description: "ASK 问题排查、提交离线任务、创建虚拟机", category: "运维", calls: 6780, quickCommands: ["排查 ASK 问题", "提交离线任务", "创建虚拟机", "查看任务日志"] },
+  { id: "admin-helper", name: "行政小助手", emoji: "🏢", description: "请假申请、费用报销、行政事务办理", category: "行政", calls: 4560, quickCommands: ["申请请假", "提交报销", "查询报销进度", "开具证明"] },
 ];
 
 // 用户创建的 Agent
