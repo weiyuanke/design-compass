@@ -10,6 +10,7 @@ import {
   Clock,
   Bell,
   Cpu,
+  Library,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -44,6 +45,7 @@ const agentNav = [
 const extensionNav = [
   { title: "MCP Server", url: "/mcp", icon: Server },
   { title: "Skill 市场", url: "/skills", icon: Puzzle },
+  { title: "知识库 RAG", url: "/knowledge-base", icon: Library },
 ];
 
 // Automation - Workflow, Scheduler, Notification
