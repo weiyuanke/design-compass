@@ -223,7 +223,8 @@ const CollaborationPage = () => {
                 key={session.id}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="flex items-center justify-between p-4 rounded-xl bg-card border border-border/50 hover:border-primary/50 transition-colors"
+                onClick={() => navigate(`/collaboration/detail?id=${session.id}`)}
+                className="flex items-center justify-between p-4 rounded-xl bg-card border border-border/50 hover:border-primary/50 transition-colors cursor-pointer"
               >
                 <div className="flex items-center gap-4 flex-1">
                   <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center text-2xl flex-shrink-0">
@@ -272,26 +273,16 @@ const CollaborationPage = () => {
                       </div>
                     </div>
                   )}
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8">
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem className="gap-2">
-                        <Play className="h-3.5 w-3.5" /> 查看进度
-                      </DropdownMenuItem>
-                      {session.status === "running" && (
-                        <DropdownMenuItem className="gap-2">
-                          <Pause className="h-3.5 w-3.5" /> 暂停
-                        </DropdownMenuItem>
-                      )}
-                      <DropdownMenuItem className="gap-2 text-destructive">
-                        <Trash2 className="h-3.5 w-3.5" /> 删除
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                    }}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
                 </div>
               </motion.div>
             );

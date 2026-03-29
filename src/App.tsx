@@ -22,6 +22,7 @@ import NotificationsPage from "./pages/NotificationsPage";
 import LLMProvidersPage from "./pages/LLMProvidersPage";
 import KnowledgeBasePage from "./pages/KnowledgeBasePage";
 import CollaborationPage from "./pages/CollaborationPage";
+import CollaborationDetailPage from "./pages/CollaborationDetailPage";
 
 const queryClient = new QueryClient();
 
@@ -49,6 +50,7 @@ const App = () => (
             <Route path="/llm-providers" element={<LLMProvidersPage />} />
             <Route path="/knowledge-base" element={<KnowledgeBasePage />} />
             <Route path="/collaboration" element={<CollaborationPage />} />
+            <Route path="/collaboration/detail" element={<CollaborationDetailPage />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
