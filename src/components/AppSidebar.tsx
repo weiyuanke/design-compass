@@ -9,6 +9,7 @@ import {
   Workflow,
   Clock,
   Bell,
+  Cpu,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -36,6 +37,7 @@ const workbenchNav = [
 const agentNav = [
   { title: "平台 Agent", url: "/tools", icon: Wrench },
   { title: "我的 Agent", url: "/my-agents", icon: Bot },
+  { title: "大模型配置", url: "/llm-providers", icon: Cpu },
 ];
 
 // Extension ecosystem - MCP and Skills

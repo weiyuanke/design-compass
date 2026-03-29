@@ -19,6 +19,7 @@ import NotFound from "./pages/NotFound";
 import WorkflowsPage from "./pages/WorkflowsPage";
 import SchedulerPage from "./pages/SchedulerPage";
 import NotificationsPage from "./pages/NotificationsPage";
+import LLMProvidersPage from "./pages/LLMProvidersPage";
 
 const queryClient = new QueryClient();
 
@@ -43,6 +44,7 @@ const App = () => (
             <Route path="/workflows" element={<WorkflowsPage />} />
             <Route path="/scheduler" element={<SchedulerPage />} />
             <Route path="/notifications" element={<NotificationsPage />} />
+            <Route path="/llm-providers" element={<LLMProvidersPage />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
