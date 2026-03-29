@@ -95,7 +95,7 @@ const McpPage = () => {
 
         <TabsContent value="user" className="space-y-4">
           <div className="flex justify-end">
-            <Button size="sm" className="gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90">
+            <Button size="sm" className="gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => navigate("/mcp/deploy")}>
               <Plus className="h-4 w-4" />
               部署新 MCP
             </Button>
