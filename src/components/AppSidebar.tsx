@@ -1,7 +1,6 @@
 import {
   Home,
   MessageSquare,
-  LayoutGrid,
   Bot,
   Wrench,
   Activity,
@@ -30,7 +29,6 @@ const mainNav = [
   { title: "平台 Agent", url: "/tools", icon: Wrench },
   { title: "MCP Server", url: "/mcp", icon: Server },
   { title: "Skill 市场", url: "/skills", icon: Puzzle },
-  { title: "Agent 模版", url: "/templates", icon: LayoutGrid },
   { title: "我的 Agent", url: "/my-agents", icon: Bot },
 ];
 
