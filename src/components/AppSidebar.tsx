@@ -38,7 +38,7 @@ const workbenchNav = [
 // Agent-related features
 const agentNav = [
   { title: "平台 Agent", url: "/tools", icon: Wrench },
-  { title: "我的 Agent", url: "/my-agents", icon: Bot },
+  { title: "自托管 Agent", url: "/my-agents", icon: Bot },
   { title: "大模型配置", url: "/llm-providers", icon: Cpu },
 ];
 
