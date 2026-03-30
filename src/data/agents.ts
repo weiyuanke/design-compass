@@ -45,6 +45,18 @@ export interface Template {
 // 平台内置 Agent（公共、开箱即用）
 export const platformAgents: PlatformAgent[] = [
   {
+    id: "agent-hub",
+    name: "Agent Hub",
+    emoji: "🎯",
+    description: "智能任务调度中心，理解你的需求并自动协调各专业 Agent 协作完成复杂任务",
+    category: "协作",
+    calls: 50000,
+    quickCommands: ["分析今日舆情并生成报告", "诊断集群问题并创建 Jira 工单", "周报汇总并发送通知", "多 Agent 协作任务"],
+    gradient: "from-emerald-500/20 to-teal-500/5",
+    capabilities: ["任务分解", "Agent 调度", "结果聚合", "多轮协作"],
+    expertise: "智能识别任务类型，自动调用最合适的 Agent 组合"
+  },
+  {
     id: "k8s-ops",
     name: "Kubernetes 运维专家",
     emoji: "☸️",
