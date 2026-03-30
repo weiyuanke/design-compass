@@ -1,11 +1,12 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Send, Paperclip, Bot, User, Plus, ChevronDown, MessageSquare, Sparkles, Zap, Shield, TrendingUp, Brain } from "lucide-react";
+import { Send, Paperclip, Bot, User, Plus, ChevronDown, MessageSquare, Sparkles, Zap, Shield, TrendingUp, Brain, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useSearchParams } from "react-router-dom";
 import { getAllChatAgents, platformAgents } from "@/data/agents";
+import { sendMessageToAgent, hasRealAgentEndpoint } from "@/lib/agentApi";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -28,6 +29,7 @@ interface Session {
   title: string;
   messages: Message[];
   updatedAt: string;
+  isLoading?: boolean;
 }
 
 const { platform, mine, all } = getAllChatAgents();
@@ -182,9 +184,12 @@ const ChatPage = () => {
     }, 500);
   };
 
-  const handleSend = (text?: string) => {
+  const handleSend = async (text?: string) => {
     const content = text || input.trim();
     if (!content || !activeSessionId) return;
+
+    const session = sessions.find(s => s.id === activeSessionId);
+    if (!session) return;
 
     const userMsg: Message = {
       id: Date.now().toString(),
@@ -193,30 +198,70 @@ const ChatPage = () => {
       timestamp: new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" }),
     };
 
+    // Add user message and set loading state
     setSessions((prev) =>
       prev.map((s) =>
         s.id === activeSessionId
-          ? { ...s, messages: [...s.messages, userMsg], updatedAt: userMsg.timestamp }
+          ? { ...s, messages: [...s.messages, userMsg], updatedAt: userMsg.timestamp, isLoading: true }
           : s
       )
     );
     setInput("");
 
-    setTimeout(() => {
-      const agentMsg: Message = {
+    try {
+      // Check if agent has real API endpoint
+      if (hasRealAgentEndpoint(session.agentId)) {
+        // Call real agent API
+        const response = await sendMessageToAgent(session.agentId, content);
+        
+        const agentMsg: Message = {
+          id: (Date.now() + 1).toString(),
+          role: "agent",
+          content: response,
+          timestamp: new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" }),
+        };
+        
+        setSessions((prev) =>
+          prev.map((s) =>
+            s.id === activeSessionId
+              ? { ...s, messages: [...s.messages, agentMsg], updatedAt: agentMsg.timestamp, isLoading: false }
+              : s
+          )
+        );
+      } else {
+        // Fallback to simulated response for agents without real endpoints
+        setTimeout(() => {
+          const agentMsg: Message = {
+            id: (Date.now() + 1).toString(),
+            role: "agent",
+            content: `正在处理你的请求："${content}"...\n\n已为你完成处理。如果需要更多帮助，请继续提问。`,
+            timestamp: new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" }),
+          };
+          setSessions((prev) =>
+            prev.map((s) =>
+              s.id === activeSessionId
+                ? { ...s, messages: [...s.messages, agentMsg], updatedAt: agentMsg.timestamp, isLoading: false }
+                : s
+            )
+          );
+        }, 800);
+      }
+    } catch (error) {
+      console.error("Error sending message:", error);
+      const errorMsg: Message = {
         id: (Date.now() + 1).toString(),
         role: "agent",
-        content: `正在处理你的请求："${content}"...\n\n已为你完成处理。如果需要更多帮助，请继续提问。`,
+        content: `抱歉，处理你的请求时出现错误：${error instanceof Error ? error.message : "未知错误"}\n\n请检查网络连接或稍后重试。`,
         timestamp: new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" }),
       };
       setSessions((prev) =>
         prev.map((s) =>
           s.id === activeSessionId
-            ? { ...s, messages: [...s.messages, agentMsg], updatedAt: agentMsg.timestamp }
+            ? { ...s, messages: [...s.messages, errorMsg], updatedAt: errorMsg.timestamp, isLoading: false }
             : s
         )
       );
-    }, 800);
+    }
   };
 
   // Landing: no agent selected
@@ -559,6 +604,26 @@ const ChatPage = () => {
                 </div>
               </motion.div>
             ))}
+            {/* Loading indicator */}
+            {activeSession?.isLoading && (
+              <motion.div
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex gap-3"
+              >
+                <div className="h-9 w-9 rounded-xl flex items-center justify-center flex-shrink-0 bg-primary/10 text-primary">
+                  <Bot className="h-5 w-5" />
+                </div>
+                <div className="space-y-1">
+                  <div className="rounded-2xl rounded-tl-md px-4 py-3 text-sm leading-relaxed bg-secondary/60 text-foreground">
+                    <div className="flex items-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                      <span className="text-muted-foreground">正在思考...</span>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            )}
           </AnimatePresence>
           <div ref={messagesEndRef} />
         </div>
