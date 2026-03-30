@@ -152,7 +152,7 @@ export const myAgents: MyAgent[] = [
     vmRegion: "本地机器",
     dataLocation: "本地存储",
     isIsolated: true,
-    externalUrl: "http://127.0.0.1:3000/",
+    externalUrl: "http://192.168.10.229:3000/",
     requiresExternalInterface: true,
   },
   {
