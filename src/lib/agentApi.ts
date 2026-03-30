@@ -19,8 +19,17 @@ export interface SendMessageResponse {
   jsonrpc: "2.0";
   id: string;
   result?: {
+    // Format 1: K8s agent format with artifacts
+    artifacts?: Array<{
+      artifactId: string;
+      parts: Array<{ kind: "text"; text: string }>;
+    }>;
+    // Format 2: Standard format with message
     message?: AgentMessage;
-    // Add other fields as needed based on actual API response
+    // Format 3: Direct format with parts
+    parts?: Array<{ kind: "text"; text: string }>;
+    // Format 4: Simple format with text
+    text?: string;
   };
   error?: {
     code: number;
