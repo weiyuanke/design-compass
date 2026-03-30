@@ -1,11 +1,12 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Send, Paperclip, Bot, User, Plus, ChevronDown, MessageSquare, Sparkles, Zap, Shield, TrendingUp, Brain, Globe, Mic, ArrowUp, Hash, ImageIcon } from "lucide-react";
+import { Send, Paperclip, Bot, User, Plus, ChevronDown, Sparkles, Globe, Mic, ArrowUp, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { useSearchParams, useNavigate } from "react-router-dom";
+import { useSearchParams, useNavigate, useLocation } from "react-router-dom";
 import { getAllChatAgents } from "@/data/agents";
+import { AgentHubPanel } from "@/components/AgentHubPanel";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,6 +21,7 @@ interface Message {
   role: "user" | "agent";
   content: string;
   timestamp: string;
+  invokedAgents?: string[];
 }
 
 interface Session {
@@ -32,9 +34,23 @@ interface Session {
 
 const { platform, mine, all } = getAllChatAgents();
 const agentLookup = Object.fromEntries(all.map((a) => [a.id, a]));
+const agentHubId = "agent-hub";
 
-const routeToAgent = (question: string): string | null => {
+const routeToAgents = (question: string): string[] => {
   const q = question.toLowerCase();
+
+  const multiAgentPatterns = [
+    { patterns: ["分析", "并", "生成报告", "汇总", "综合"], agents: ["sentinel", "report-analyzer", "project-mgr"] },
+    { patterns: ["诊断", "并", "创建", "工单", "jira"], agents: ["k8s-ops", "project-mgr"] },
+    { patterns: ["监控", "并", "通知", "告警"], agents: ["sentinel", "admin-helper"] },
+  ];
+
+  for (const pattern of multiAgentPatterns) {
+    if (pattern.patterns.every((p) => q.includes(p))) {
+      return pattern.agents;
+    }
+  }
+
   const rules: { keywords: string[]; agentId: string }[] = [
     { keywords: ["k8s", "kubernetes", "集群", "pod", "节点", "运维", "诊断"], agentId: "k8s-ops" },
     { keywords: ["jira", "项目", "会议", "需求", "周报", "进度"], agentId: "project-mgr" },
@@ -44,12 +60,11 @@ const routeToAgent = (question: string): string | null => {
     { keywords: ["舆情", "新闻", "情绪", "监控", "告警", "交易信号"], agentId: "sentinel" },
   ];
   for (const rule of rules) {
-    if (rule.keywords.some((k) => q.includes(k))) return rule.agentId;
+    if (rule.keywords.some((k) => q.includes(k))) return [rule.agentId];
   }
-  return platform.length > 0 ? platform[0].id : null;
+  return [];
 };
 
-// Auto-expanding textarea hook
 const useAutoResize = (value: string) => {
   const ref = useRef<HTMLTextAreaElement>(null);
   useEffect(() => {
@@ -61,10 +76,12 @@ const useAutoResize = (value: string) => {
   return ref;
 };
 
-const ChatPage = () => {
+const ConversationDetailPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
-  const initialAgentId = searchParams.get("agent") || searchParams.get("tool") || "";
+  const location = useLocation();
+  const initialAgentId = searchParams.get("agent") || agentHubId;
+  const initialMessage = (location.state as { initialMessage?: string })?.initialMessage;
 
   const [selectedAgentId, setSelectedAgentId] = useState<string>(initialAgentId);
   const [sessions, setSessions] = useState<Session[]>([]);
@@ -76,17 +93,25 @@ const ChatPage = () => {
 
   const agent = selectedAgentId ? agentLookup[selectedAgentId] : null;
   const activeSession = sessions.find((s) => s.id === activeSessionId);
-  const messages = activeSession?.messages || [];
+  const messages = useMemo(() => activeSession?.messages || [], [activeSession?.messages]);
+  const isAgentHubMode = selectedAgentId === agentHubId;
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
   useEffect(() => {
-    if (initialAgentId && agentLookup[initialAgentId] && sessions.length === 0) {
-      createSession(initialAgentId);
+    if (sessions.length === 0) {
+      createSession(agentHubId);
+      // If there's an initial message from navigation, send it
+      if (initialMessage) {
+        setTimeout(() => {
+          setInput(initialMessage);
+          handleSmartSend(initialMessage);
+        }, 100);
+      }
     }
-  }, []);
+  }, [sessions.length]);
 
   const selectAgent = (agentId: string) => {
     setSelectedAgentId(agentId);
@@ -106,7 +131,9 @@ const ChatPage = () => {
         {
           id: "welcome",
           role: "agent",
-          content: `你好！我是${a.name}，${a.description}。有什么可以帮你的吗？`,
+          content: agentId === agentHubId
+            ? `你好！我是${a.name}，${a.description}。你可以直接向我描述复杂任务，我会智能协调各专业 Agent 帮你完成。`
+            : `你好！我是${a.name}，${a.description}。有什么可以帮你的吗？`,
           timestamp: new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" }),
         },
       ],
@@ -116,13 +143,143 @@ const ChatPage = () => {
     setSelectedAgentId(agentId);
   };
 
-  const handleSmartSend = () => {
-    const content = input.trim();
-    if (!content) return;
+  const handleSmartSend = (content?: string) => {
+    const text = content || input.trim();
+    if (!text) return;
+    setIsRouting(true);
 
-    // Navigate to conversation detail page with the message
-    const agentParam = selectedAgentId ? `?agent=${selectedAgentId}` : '';
-    navigate(`/conversation${agentParam}`, { state: { initialMessage: content } });
+    if (isAgentHubMode) {
+      const invokedAgentIds = routeToAgents(text);
+
+      setTimeout(() => {
+        if (!activeSessionId) {
+          createSession(agentHubId);
+          return;
+        }
+
+        const userMsg: Message = {
+          id: Date.now().toString(),
+          role: "user",
+          content: text,
+          timestamp: new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" }),
+        };
+        setSessions((prev) =>
+          prev.map((s) =>
+            s.id === activeSessionId
+              ? { ...s, messages: [...s.messages, userMsg], updatedAt: userMsg.timestamp }
+              : s
+          )
+        );
+        setInput("");
+
+        setTimeout(() => {
+          let agentContent = `收到你的任务："${text}"\n\n`;
+
+          if (invokedAgentIds.length > 1) {
+            agentContent += `🔄 正在协调多个 Agent 协作处理：\n`;
+            invokedAgentIds.forEach((id) => {
+              const a = agentLookup[id];
+              if (a) agentContent += `  • ${a.name}\n`;
+            });
+            agentContent += `\n请稍候，正在聚合结果...`;
+          } else if (invokedAgentIds.length === 1) {
+            const a = agentLookup[invokedAgentIds[0]];
+            agentContent += `📋 已委派给专家：${a?.name}\n\n正在处理中...`;
+          } else {
+            agentContent += `正在为你处理...`;
+          }
+
+          const agentMsg: Message = {
+            id: (Date.now() + 1).toString(),
+            role: "agent",
+            content: agentContent,
+            timestamp: new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" }),
+            invokedAgents: invokedAgentIds,
+          };
+          setSessions((prev) =>
+            prev.map((s) =>
+              s.id === activeSessionId
+                ? { ...s, messages: [...s.messages, agentMsg], updatedAt: agentMsg.timestamp }
+                : s
+            )
+          );
+          setIsRouting(false);
+
+          if (invokedAgentIds.length > 0) {
+            setTimeout(() => {
+              const finalMsg: Message = {
+                id: (Date.now() + 2).toString(),
+                role: "agent",
+                content: `✅ 任务已完成！\n\n已综合以下 Agent 的分析结果：\n${invokedAgentIds.map((id) => `• ${agentLookup[id]?.name}`).join("\n")}\n\n如需查看详细报告或继续处理，请告诉我。`,
+                timestamp: new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" }),
+              };
+              setSessions((prev) =>
+                prev.map((s) =>
+                  s.id === activeSessionId
+                    ? { ...s, messages: [...s.messages, finalMsg], updatedAt: finalMsg.timestamp }
+                    : s
+                )
+              );
+            }, 2000);
+          }
+        }, 600);
+      }, 300);
+      return;
+    }
+
+    const matchedAgentId = routeToAgents(text)[0] || selectedAgentId;
+    setTimeout(() => {
+      if (matchedAgentId) {
+        let existingSession = sessions.find((s) => s.agentId === matchedAgentId);
+        if (!existingSession) {
+          const a = agentLookup[matchedAgentId];
+          if (!a) return;
+          const newSession: Session = {
+            id: Date.now().toString(),
+            agentId: matchedAgentId,
+            title: `与 ${a.name} 的对话`,
+            updatedAt: new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" }),
+            messages: [],
+          };
+          setSessions((prev) => [newSession, ...prev]);
+          existingSession = newSession;
+        }
+        setActiveSessionId(existingSession.id);
+        setSelectedAgentId(matchedAgentId);
+        setSearchParams({ agent: matchedAgentId });
+        setInput("");
+        setIsRouting(false);
+
+        const userMsg: Message = {
+          id: Date.now().toString(),
+          role: "user",
+          content: text,
+          timestamp: new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" }),
+        };
+        setSessions((prev) =>
+          prev.map((s) =>
+            s.id === existingSession!.id
+              ? { ...s, messages: [...s.messages, userMsg], updatedAt: userMsg.timestamp }
+              : s
+          )
+        );
+        setTimeout(() => {
+          const agentMsg: Message = {
+            id: (Date.now() + 1).toString(),
+            role: "agent",
+            content: `收到你的问题："${text}"\n\n正在为你处理...`,
+            timestamp: new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" }),
+          };
+          setSessions((prev) =>
+            prev.map((s) =>
+              s.id === existingSession!.id
+                ? { ...s, messages: [...s.messages, agentMsg], updatedAt: agentMsg.timestamp }
+                : s
+            )
+          );
+        }, 600);
+      }
+    }, 500);
   };
 
   const handleSend = (text?: string) => {
@@ -148,7 +305,9 @@ const ChatPage = () => {
       const agentMsg: Message = {
         id: (Date.now() + 1).toString(),
         role: "agent",
-        content: `正在处理你的请求："${content}"...\n\n已为你完成处理。如果需要更多帮助，请继续提问。`,
+        content: isAgentHubMode
+          ? `收到你的任务："${content}"\n\n正在协调相关 Agent 处理，请稍候...`
+          : `正在处理你的请求："${content}"...\n\n已为你完成处理。如果需要更多帮助，请继续提问。`,
         timestamp: new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" }),
       };
       setSessions((prev) =>
@@ -164,197 +323,54 @@ const ChatPage = () => {
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      if (!agent || !activeSessionId) {
+      if (isAgentHubMode && !activeSessionId) {
         handleSmartSend();
-      } else {
+      } else if (agent && activeSessionId) {
         handleSend();
       }
     }
   };
 
-  // Suggestion chips for landing page
-  const suggestions = [
-    { icon: <Sparkles className="h-3.5 w-3.5" />, text: "帮我分析今日舆情动态" },
-    { icon: <Zap className="h-3.5 w-3.5" />, text: "诊断 K8s 集群异常" },
-    { icon: <MessageSquare className="h-3.5 w-3.5" />, text: "生成本周工作汇总" },
-    { icon: <Shield className="h-3.5 w-3.5" />, text: "帮我提交一个请假申请" },
-  ];
-
-  // ==================== LANDING PAGE ====================
-  if (!agent || !activeSessionId) {
+  if (isAgentHubMode && !activeSessionId) {
     return (
-      <div className="flex flex-col h-[calc(100vh-3.5rem)] items-center justify-center relative overflow-hidden">
-        {/* Background subtle pattern */}
-        <div className="absolute inset-0 bg-gradient-to-b from-primary/[0.02] via-transparent to-transparent pointer-events-none" />
-
-        {/* Main content - vertically centered */}
-        <div className="w-full max-w-3xl mx-auto px-6 space-y-8 -mt-16">
-          {/* Title */}
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-center space-y-2"
-          >
-            <h1 className="text-3xl md:text-4xl font-bold text-foreground tracking-tight">
-              有什么可以帮你的？
-            </h1>
-            <p className="text-muted-foreground text-sm">
-              输入问题自动匹配专家 Agent，或选择下方 Agent 开始对话
-            </p>
-          </motion.div>
-
-          {/* Input container - Open WebUI style */}
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-          >
-            <div className="relative rounded-2xl bg-card border border-border/60 shadow-lg shadow-primary/[0.03] focus-within:border-primary/40 focus-within:shadow-primary/[0.08] transition-all duration-300">
-              {/* Textarea */}
-              <textarea
-                ref={textareaRef}
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder="输入任何问题..."
-                rows={1}
-                disabled={isRouting}
-                className="w-full resize-none bg-transparent px-5 pt-4 pb-14 text-sm md:text-base text-foreground placeholder:text-muted-foreground/60 focus:outline-none min-h-[56px] max-h-[200px]"
-              />
-
-              {/* Bottom toolbar */}
-              <div className="absolute bottom-0 left-0 right-0 flex items-center justify-between px-3 py-2.5">
-                <div className="flex items-center gap-1">
-                  <Button type="button" variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary/80">
-                    <Paperclip className="h-4 w-4" />
-                  </Button>
-                  <Button type="button" variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary/80">
-                    <Globe className="h-4 w-4" />
-                  </Button>
-                  <Button type="button" variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary/80">
-                    <Mic className="h-4 w-4" />
-                  </Button>
-                </div>
-
-                <Button
-                  onClick={handleSmartSend}
-                  disabled={!input.trim() || isRouting}
-                  size="icon"
-                  className="h-8 w-8 rounded-lg bg-foreground text-background hover:bg-foreground/90 disabled:opacity-20 transition-all"
-                >
-                  {isRouting ? (
-                    <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: "linear" }}>
-                      <Sparkles className="h-4 w-4" />
-                    </motion.div>
-                  ) : (
-                    <ArrowUp className="h-4 w-4" />
-                  )}
-                </Button>
-              </div>
-            </div>
-          </motion.div>
-
-          {/* Suggestion chips */}
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="flex flex-wrap gap-2 justify-center"
-          >
-            {suggestions.map((s, i) => (
-              <button
-                key={i}
-                onClick={() => { setInput(s.text); textareaRef.current?.focus(); }}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-border/60 bg-card/50 text-sm text-muted-foreground hover:text-foreground hover:border-primary/30 hover:bg-card transition-all duration-200"
-              >
-                {s.icon}
-                {s.text}
-              </button>
-            ))}
-          </motion.div>
-
-          {/* Agent grid - compact */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.3 }}
-            className="pt-4"
-          >
-            <div className="flex items-center gap-2 mb-4">
-              <h2 className="text-sm font-medium text-muted-foreground">选择 Agent 开始对话</h2>
-              <div className="flex-1 h-px bg-border/50" />
-            </div>
-            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-              {platform.slice(0, 6).map((a, i) => (
-                <motion.button
-                  key={a.id}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.3 + i * 0.04 }}
-                  onClick={() => selectAgent(a.id)}
-                  className="group flex items-center gap-3 p-3 rounded-xl bg-card/60 border border-border/40 hover:border-primary/40 hover:bg-card hover:shadow-md transition-all duration-200 text-left"
-                >
-                  <div className={`h-10 w-10 rounded-xl bg-gradient-to-br ${a.gradient} flex items-center justify-center text-lg flex-shrink-0 group-hover:scale-105 transition-transform`}>
-                    {a.emoji}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <h3 className="text-sm font-medium text-foreground truncate group-hover:text-primary transition-colors">{a.name}</h3>
-                    <p className="text-xs text-muted-foreground truncate">{a.description}</p>
-                  </div>
-                </motion.button>
-              ))}
-            </div>
-            {mine.length > 0 && (
-              <div className="mt-4">
-                <div className="flex items-center gap-2 mb-3">
-                  <h2 className="text-sm font-medium text-muted-foreground">我的 Agent</h2>
-                  <div className="flex-1 h-px bg-border/50" />
-                </div>
-                <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                  {mine.map((a, i) => (
-                    <motion.button
-                      key={a.id}
-                      initial={{ opacity: 0, y: 8 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.4 + i * 0.04 }}
-                      onClick={() => selectAgent(a.id)}
-                      className="group flex items-center gap-3 p-3 rounded-xl bg-card/60 border border-border/40 hover:border-accent/40 hover:bg-card hover:shadow-md transition-all duration-200 text-left"
-                    >
-                      <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-accent/20 to-accent/5 flex items-center justify-center text-lg flex-shrink-0 group-hover:scale-105 transition-transform">
-                        {a.emoji}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <h3 className="text-sm font-medium text-foreground truncate group-hover:text-accent transition-colors">{a.name}</h3>
-                        <p className="text-xs text-muted-foreground truncate">{a.description}</p>
-                      </div>
-                    </motion.button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </motion.div>
-        </div>
-      </div>
+      <AgentHubPanel
+        onSelectAgent={selectAgent}
+        onSmartSend={handleSmartSend}
+      />
     );
   }
 
-  // ==================== CHAT VIEW ====================
   return (
     <div className="flex h-[calc(100vh-3.5rem)]">
       {/* Session sidebar */}
-      <div className="w-56 border-r border-border/50 flex-col flex-shrink-0 hidden md:flex">
-        <div className="p-3">
+      <div className="w-64 border-r border-border/50 flex-col flex-shrink-0 hidden md:flex">
+        <div className="p-3 border-b border-border/50">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="w-full justify-start gap-2 mb-2"
+            onClick={() => navigate('/chat')}
+          >
+            <ArrowLeft className="h-4 w-4" /> 返回对话首页
+          </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" className="w-full justify-between gap-2 h-9 text-sm">
                 <span className="flex items-center gap-2 truncate">
-                  <span>{agent.emoji}</span>
-                  <span className="truncate">{agent.name}</span>
+                  <span>{agent?.emoji || "🎯"}</span>
+                  <span className="truncate">{agent?.name || "Agent Hub"}</span>
                 </span>
                 <ChevronDown className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="w-52 max-h-80 overflow-y-auto">
+              <DropdownMenuItem
+                onClick={() => { setSelectedAgentId(agentHubId); setSearchParams({}); setSessions([]); setActiveSessionId(null); }}
+                className="gap-2"
+              >
+                <span>🎯</span><span>Agent Hub</span>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
               <DropdownMenuLabel className="text-xs text-muted-foreground">平台 Agent</DropdownMenuLabel>
               {platform.map((a) => (
                 <DropdownMenuItem key={a.id} onClick={() => selectAgent(a.id)} className="gap-2">
@@ -376,8 +392,13 @@ const ChatPage = () => {
           </DropdownMenu>
         </div>
 
-        <div className="p-3 pt-0">
-          <Button variant="ghost" size="sm" className="w-full justify-start gap-2 text-muted-foreground hover:text-foreground h-8" onClick={() => createSession(selectedAgentId)}>
+        <div className="p-3">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="w-full justify-start gap-2 text-muted-foreground hover:text-foreground h-8"
+            onClick={() => isAgentHubMode ? createSession(agentHubId) : createSession(selectedAgentId)}
+          >
             <Plus className="h-3.5 w-3.5" /> 新建对话
           </Button>
         </div>
@@ -392,7 +413,7 @@ const ChatPage = () => {
               }`}
             >
               <div className="flex items-center gap-2">
-                <span className="text-xs">{agentLookup[s.agentId]?.emoji}</span>
+                <span className="text-xs">{agentLookup[s.agentId]?.emoji || "🎯"}</span>
                 <span className="truncate">{s.title}</span>
               </div>
               <p className="text-xs text-muted-foreground/60 mt-0.5">{s.updatedAt}</p>
@@ -406,19 +427,19 @@ const ChatPage = () => {
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-border/50 bg-card/50 backdrop-blur">
           <div className="flex items-center gap-3">
-            <div className={`h-10 w-10 rounded-xl bg-gradient-to-br ${'gradient' in agent ? agent.gradient : 'from-primary/20 to-primary/5'} flex items-center justify-center text-xl flex-shrink-0`}>
-              {agent.emoji}
+            <div className={`h-10 w-10 rounded-xl bg-gradient-to-br ${agent?.gradient || 'from-emerald-500/20 to-teal-500/5'} flex items-center justify-center text-xl flex-shrink-0`}>
+              {agent?.emoji || "🎯"}
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-sm font-semibold text-foreground">{agent.name}</h2>
-                <Badge variant="secondary" className="text-xs">{agent.type === "platform" ? "平台" : "我的"}</Badge>
+                <h2 className="text-sm font-semibold text-foreground">{agent?.name || "Agent Hub"}</h2>
+                <Badge variant="secondary" className="text-xs">{isAgentHubMode ? "智能调度" : agent?.type === "platform" ? "平台" : "我的"}</Badge>
               </div>
               <div className="flex items-center gap-2 mt-0.5">
                 <span className="text-xs text-emerald-500 flex items-center gap-1">
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> 在线
                 </span>
-                {'capabilities' in agent && agent.capabilities && (
+                {agent?.capabilities && (
                   <span className="text-xs text-muted-foreground hidden lg:inline">
                     · {agent.capabilities.slice(0, 3).join(" · ")}
                   </span>
@@ -435,6 +456,13 @@ const ChatPage = () => {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="max-h-80 overflow-y-auto">
+                <DropdownMenuItem
+                  onClick={() => { setSelectedAgentId(agentHubId); setSearchParams({}); setSessions([]); setActiveSessionId(null); }}
+                  className="gap-2"
+                >
+                  <span>🎯</span><span>Agent Hub</span>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
                 <DropdownMenuLabel className="text-xs text-muted-foreground">平台 Agent</DropdownMenuLabel>
                 {platform.map((a) => (
                   <DropdownMenuItem key={a.id} onClick={() => selectAgent(a.id)} className="gap-2">
@@ -478,6 +506,18 @@ const ChatPage = () => {
                       msg.role === "user" ? "bg-primary text-primary-foreground rounded-tr-md" : "bg-secondary/60 text-foreground rounded-tl-md"
                     }`}>
                       <p className="whitespace-pre-wrap">{msg.content}</p>
+                      {msg.invokedAgents && msg.invokedAgents.length > 0 && (
+                        <div className="mt-2 flex flex-wrap gap-1">
+                          {msg.invokedAgents.map((id) => {
+                            const a = agentLookup[id];
+                            return a ? (
+                              <Badge key={id} variant="outline" className="text-[10px]">
+                                {a.emoji} {a.name}
+                              </Badge>
+                            ) : null;
+                          })}
+                        </div>
+                      )}
                     </div>
                     <span className="text-xs text-muted-foreground/50 px-1">{msg.timestamp}</span>
                   </div>
@@ -489,7 +529,7 @@ const ChatPage = () => {
         </div>
 
         {/* Quick commands */}
-        {agent.quickCommands && agent.quickCommands.length > 0 && (
+        {agent?.quickCommands && agent.quickCommands.length > 0 && (
           <div className="px-4 pb-2">
             <div className="max-w-3xl mx-auto flex flex-wrap gap-2">
               {agent.quickCommands.map((cmd) => (
@@ -501,7 +541,7 @@ const ChatPage = () => {
           </div>
         )}
 
-        {/* Input - Open WebUI style */}
+        {/* Input */}
         <div className="px-4 pb-4 pt-2">
           <div className="max-w-3xl mx-auto">
             <div className="relative rounded-2xl bg-card border border-border/60 shadow-sm focus-within:border-primary/40 focus-within:shadow-md focus-within:shadow-primary/[0.05] transition-all duration-300">
@@ -510,7 +550,7 @@ const ChatPage = () => {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder={`向 ${agent.name} 提问...`}
+                placeholder={isAgentHubMode ? "描述你的任务，我会协调 Agent 协作..." : `向 ${agent?.name} 提问...`}
                 rows={1}
                 className="w-full resize-none bg-transparent px-5 pt-3.5 pb-12 text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none min-h-[52px] max-h-[200px]"
               />
@@ -527,17 +567,23 @@ const ChatPage = () => {
                   </Button>
                 </div>
                 <Button
-                  onClick={() => handleSend()}
+                  onClick={() => isAgentHubMode ? handleSmartSend() : handleSend()}
                   disabled={!input.trim()}
                   size="icon"
                   className="h-8 w-8 rounded-lg bg-foreground text-background hover:bg-foreground/90 disabled:opacity-20 transition-all"
                 >
-                  <ArrowUp className="h-4 w-4" />
+                  {isRouting ? (
+                    <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: "linear" }}>
+                      <Sparkles className="h-4 w-4" />
+                    </motion.div>
+                  ) : (
+                    <ArrowUp className="h-4 w-4" />
+                  )}
                 </Button>
               </div>
             </div>
             <p className="text-[11px] text-muted-foreground/50 text-center mt-2">
-              Enter 发送 · Shift + Enter 换行
+              {isAgentHubMode ? "Agent Hub 智能调度 · Enter 发送" : `与 ${agent?.name} 对话 · Enter 发送`}
             </p>
           </div>
         </div>
@@ -546,4 +592,4 @@ const ChatPage = () => {
   );
 };
 
-export default ChatPage;
+export default ConversationDetailPage;
