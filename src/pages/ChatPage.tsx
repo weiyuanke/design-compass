@@ -482,7 +482,7 @@ const ChatPage = () => {
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-border/50 bg-card/50 backdrop-blur">
           <div className="flex items-center gap-3">
-            <div className={`h-10 w-10 rounded-xl bg-gradient-to-br ${agent.gradient || 'from-primary/20 to-primary/5'} flex items-center justify-center text-xl flex-shrink-0`}>
+            <div className={`h-10 w-10 rounded-xl bg-gradient-to-br ${'gradient' in agent ? agent.gradient : 'from-primary/20 to-primary/5'} flex items-center justify-center text-xl flex-shrink-0`}>
               {agent.emoji}
             </div>
             <div>
