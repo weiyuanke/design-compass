@@ -12,6 +12,7 @@ export interface SendMessageRequest {
   method: "message/send";
   params: {
     message: AgentMessage;
+    contextId?: string; // Optional: maintain conversation context
   };
 }
 
@@ -23,6 +24,17 @@ export interface SendMessageResponse {
     artifacts?: Array<{
       artifactId: string;
       parts: Array<{ kind: "text"; text: string }>;
+    }>;
+    // Context ID for maintaining conversation
+    contextId?: string;
+    // Message history (optional)
+    history?: Array<{
+      contextId: string;
+      kind: string;
+      messageId: string;
+      parts: Array<{ kind: "text"; text: string }>;
+      role: "user" | "assistant";
+      taskId?: string;
     }>;
     // Format 2: Standard format with message
     message?: AgentMessage;
@@ -43,6 +55,33 @@ const AGENT_ENDPOINTS: Record<string, string> = {
   // Add more agent endpoints here as they become available
 };
 
+// Session context storage to maintain conversation continuity
+// Key: agentId, Value: contextId
+const sessionContexts: Record<string, string> = {};
+
+/**
+ * Get or create a context ID for an agent session
+ */
+export function getAgentContextId(agentId: string): string | undefined {
+  return sessionContexts[agentId];
+}
+
+/**
+ * Set the context ID for an agent session
+ */
+export function setAgentContextId(agentId: string, contextId: string): void {
+  sessionContexts[agentId] = contextId;
+  console.log(`[Agent API] Set context ID for ${agentId}:`, contextId);
+}
+
+/**
+ * Clear the context ID for an agent session (start fresh conversation)
+ */
+export function clearAgentContextId(agentId: string): void {
+  delete sessionContexts[agentId];
+  console.log(`[Agent API] Cleared context ID for ${agentId}`);
+}
+
 /**
  * Send a message to a specific agent
  */
@@ -51,10 +90,13 @@ export async function sendMessageToAgent(
   userMessage: string
 ): Promise<string> {
   const endpoint = AGENT_ENDPOINTS[agentId];
-  
+
   if (!endpoint) {
     throw new Error(`No endpoint configured for agent: ${agentId}`);
   }
+
+  // Get existing context ID if available
+  const contextId = getAgentContextId(agentId);
 
   const requestBody: SendMessageRequest = {
     jsonrpc: "2.0",
@@ -66,12 +108,14 @@ export async function sendMessageToAgent(
         role: "user",
         parts: [{ kind: "text", text: userMessage }],
       },
+      // Include contextId to maintain conversation continuity
+      ...(contextId && { contextId }),
     },
   };
 
   try {
     console.log(`[Agent API] Sending request to ${agentId}:`, requestBody);
-    
+
     const response = await fetch(endpoint, {
       method: "POST",
       headers: {
@@ -91,6 +135,11 @@ export async function sendMessageToAgent(
 
     if (data.error) {
       throw new Error(`Agent API error: ${data.error.message}`);
+    }
+
+    // Save the context ID from response for future messages
+    if (data.result?.contextId) {
+      setAgentContextId(agentId, data.result.contextId);
     }
 
     // Try to extract response message text - handle multiple possible formats

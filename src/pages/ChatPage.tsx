@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useSearchParams } from "react-router-dom";
 import { getAllChatAgents, platformAgents } from "@/data/agents";
-import { sendMessageToAgent, hasRealAgentEndpoint } from "@/lib/agentApi";
+import { sendMessageToAgent, hasRealAgentEndpoint, clearAgentContextId } from "@/lib/agentApi";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -93,6 +93,12 @@ const ChatPage = () => {
   const createSession = (agentId: string) => {
     const a = agentLookup[agentId];
     if (!a) return;
+
+    // Clear context for real API agents to start fresh conversation
+    if (hasRealAgentEndpoint(agentId)) {
+      clearAgentContextId(agentId);
+    }
+
     const newSession: Session = {
       id: Date.now().toString(),
       agentId,
@@ -128,7 +134,11 @@ const ChatPage = () => {
         let existingSession = sessions.find((s) => s.agentId === matchedAgentId);
 
         if (!existingSession) {
-          // 创建新会话
+          // 创建新会话时清除上下文，开始新的对话
+          if (hasRealAgentEndpoint(matchedAgentId)) {
+            clearAgentContextId(matchedAgentId);
+          }
+
           const a = agentLookup[matchedAgentId];
           if (!a) return;
           const newSession: Session = {
