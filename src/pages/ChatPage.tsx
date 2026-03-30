@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useSearchParams } from "react-router-dom";
 import { getAllChatAgents, platformAgents } from "@/data/agents";
-import { sendMessageToAgent, hasRealAgentEndpoint, clearAgentContextId } from "@/lib/agentApi";
+import { sendMessageToAgent, hasRealAgentEndpoint } from "@/lib/agentApi";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -30,6 +30,7 @@ interface Session {
   messages: Message[];
   updatedAt: string;
   isLoading?: boolean;
+  contextId?: string; // Store context ID per session
 }
 
 const { platform, mine, all } = getAllChatAgents();
@@ -94,11 +95,6 @@ const ChatPage = () => {
     const a = agentLookup[agentId];
     if (!a) return;
 
-    // Clear context for real API agents to start fresh conversation
-    if (hasRealAgentEndpoint(agentId)) {
-      clearAgentContextId(agentId);
-    }
-
     const newSession: Session = {
       id: Date.now().toString(),
       agentId,
@@ -112,6 +108,7 @@ const ChatPage = () => {
           timestamp: new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" }),
         },
       ],
+      // Don't initialize with contextId - new session starts fresh
     };
     setSessions((prev) => [newSession, ...prev]);
     setActiveSessionId(newSession.id);
@@ -134,11 +131,6 @@ const ChatPage = () => {
         let existingSession = sessions.find((s) => s.agentId === matchedAgentId);
 
         if (!existingSession) {
-          // 创建新会话时清除上下文，开始新的对话
-          if (hasRealAgentEndpoint(matchedAgentId)) {
-            clearAgentContextId(matchedAgentId);
-          }
-
           const a = agentLookup[matchedAgentId];
           if (!a) return;
           const newSession: Session = {
@@ -147,6 +139,7 @@ const ChatPage = () => {
             title: `与 ${a.name} 的对话`,
             updatedAt: new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" }),
             messages: [],
+            // Don't initialize with contextId - new session starts fresh
           };
           setSessions((prev) => [newSession, ...prev]);
           existingSession = newSession;
@@ -221,20 +214,31 @@ const ChatPage = () => {
     try {
       // Check if agent has real API endpoint
       if (hasRealAgentEndpoint(session.agentId)) {
-        // Call real agent API
-        const response = await sendMessageToAgent(session.agentId, content);
-        
+        // Call real agent API with session's contextId
+        const { text: responseText, contextId: newContextId } = await sendMessageToAgent(
+          session.agentId,
+          content,
+          session.contextId
+        );
+
         const agentMsg: Message = {
           id: (Date.now() + 1).toString(),
           role: "agent",
-          content: response,
+          content: responseText,
           timestamp: new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" }),
         };
-        
+
+        // Update session with new contextId for continuity
         setSessions((prev) =>
           prev.map((s) =>
             s.id === activeSessionId
-              ? { ...s, messages: [...s.messages, agentMsg], updatedAt: agentMsg.timestamp, isLoading: false }
+              ? {
+                  ...s,
+                  messages: [...s.messages, agentMsg],
+                  updatedAt: agentMsg.timestamp,
+                  isLoading: false,
+                  contextId: newContextId,
+                }
               : s
           )
         );

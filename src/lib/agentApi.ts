@@ -55,48 +55,23 @@ const AGENT_ENDPOINTS: Record<string, string> = {
   // Add more agent endpoints here as they become available
 };
 
-// Session context storage to maintain conversation continuity
-// Key: agentId, Value: contextId
-const sessionContexts: Record<string, string> = {};
-
 /**
- * Get or create a context ID for an agent session
- */
-export function getAgentContextId(agentId: string): string | undefined {
-  return sessionContexts[agentId];
-}
-
-/**
- * Set the context ID for an agent session
- */
-export function setAgentContextId(agentId: string, contextId: string): void {
-  sessionContexts[agentId] = contextId;
-  console.log(`[Agent API] Set context ID for ${agentId}:`, contextId);
-}
-
-/**
- * Clear the context ID for an agent session (start fresh conversation)
- */
-export function clearAgentContextId(agentId: string): void {
-  delete sessionContexts[agentId];
-  console.log(`[Agent API] Cleared context ID for ${agentId}`);
-}
-
-/**
- * Send a message to a specific agent
+ * Send a message to a specific agent with optional context ID
+ * @param agentId - The ID of the agent to send message to
+ * @param userMessage - The message content
+ * @param contextId - Optional context ID to maintain conversation continuity
+ * @returns Promise with the response text and the new context ID
  */
 export async function sendMessageToAgent(
   agentId: string,
-  userMessage: string
-): Promise<string> {
+  userMessage: string,
+  contextId?: string
+): Promise<{ text: string; contextId?: string }> {
   const endpoint = AGENT_ENDPOINTS[agentId];
 
   if (!endpoint) {
     throw new Error(`No endpoint configured for agent: ${agentId}`);
   }
-
-  // Get existing context ID if available
-  const contextId = getAgentContextId(agentId);
 
   const requestBody: SendMessageRequest = {
     jsonrpc: "2.0",
@@ -137,38 +112,42 @@ export async function sendMessageToAgent(
       throw new Error(`Agent API error: ${data.error.message}`);
     }
 
-    // Save the context ID from response for future messages
-    if (data.result?.contextId) {
-      setAgentContextId(agentId, data.result.contextId);
-    }
-
-    // Try to extract response message text - handle multiple possible formats
+    // Extract response text - handle multiple possible formats
+    let responseText = "";
     // Format 1: result.artifacts[0].parts[0].text (K8s agent format)
     if (data.result?.artifacts && data.result.artifacts.length > 0) {
       const firstArtifact = data.result.artifacts[0];
       if (firstArtifact?.parts && firstArtifact.parts.length > 0) {
-        return firstArtifact.parts[0].text;
+        responseText = firstArtifact.parts[0].text;
       }
     }
 
     // Format 2: result.message.parts[0].text (standard format)
-    if (data.result?.message?.parts && data.result.message.parts.length > 0) {
-      return data.result.message.parts[0].text;
+    if (!responseText && data.result?.message?.parts && data.result.message.parts.length > 0) {
+      responseText = data.result.message.parts[0].text;
     }
 
     // Format 3: result.parts[0].text (direct format)
-    if (data.result?.parts && data.result.parts.length > 0) {
-      return data.result.parts[0].text;
+    if (!responseText && data.result?.parts && data.result.parts.length > 0) {
+      responseText = data.result.parts[0].text;
     }
 
     // Format 4: result.text (simple format)
-    if (data.result?.text) {
-      return data.result.text;
+    if (!responseText && data.result?.text) {
+      responseText = data.result.text;
     }
 
     // If we reach here, log the full response for debugging
-    console.error(`[Agent API] Unexpected response format:`, JSON.stringify(data, null, 2));
-    throw new Error("Invalid response format from agent API");
+    if (!responseText) {
+      console.error(`[Agent API] Unexpected response format:`, JSON.stringify(data, null, 2));
+      throw new Error("Invalid response format from agent API");
+    }
+
+    // Return both the response text and the context ID from the response
+    return {
+      text: responseText,
+      contextId: data.result?.contextId,
+    };
   } catch (error) {
     console.error(`[Agent API] Error calling agent ${agentId}:`, error);
     throw error;
