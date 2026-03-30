@@ -1,11 +1,11 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Send, Paperclip, Bot, User, Plus, ChevronDown, MessageSquare, Sparkles, Zap, Shield, TrendingUp, Brain } from "lucide-react";
-import { Input } from "@/components/ui/input";
+import { Send, Paperclip, Bot, User, Plus, ChevronDown, MessageSquare, Sparkles, Zap, Shield, TrendingUp, Brain, Globe, Mic, ArrowUp, Hash, Image as ImageIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
 import { useSearchParams } from "react-router-dom";
-import { getAllChatAgents, platformAgents } from "@/data/agents";
+import { getAllChatAgents } from "@/data/agents";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -33,11 +33,8 @@ interface Session {
 const { platform, mine, all } = getAllChatAgents();
 const agentLookup = Object.fromEntries(all.map((a) => [a.id, a]));
 
-// 智能路由：根据问题内容匹配最合适的 Agent
 const routeToAgent = (question: string): string | null => {
   const q = question.toLowerCase();
-
-  // 关键词匹配规则
   const rules: { keywords: string[]; agentId: string }[] = [
     { keywords: ["k8s", "kubernetes", "集群", "pod", "节点", "运维", "诊断"], agentId: "k8s-ops" },
     { keywords: ["jira", "项目", "会议", "需求", "周报", "进度"], agentId: "project-mgr" },
@@ -46,15 +43,22 @@ const routeToAgent = (question: string): string | null => {
     { keywords: ["研报", "报告", "分析", "解读", "目标价", "盈利预测"], agentId: "report-analyzer" },
     { keywords: ["舆情", "新闻", "情绪", "监控", "告警", "交易信号"], agentId: "sentinel" },
   ];
-
   for (const rule of rules) {
-    if (rule.keywords.some((k) => q.includes(k))) {
-      return rule.agentId;
-    }
+    if (rule.keywords.some((k) => q.includes(k))) return rule.agentId;
   }
-
-  // 如果没有匹配到，返回第一个平台 Agent 作为默认
   return platform.length > 0 ? platform[0].id : null;
+};
+
+// Auto-expanding textarea hook
+const useAutoResize = (value: string) => {
+  const ref = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = Math.min(el.scrollHeight, 200) + "px";
+  }, [value]);
+  return ref;
 };
 
 const ChatPage = () => {
@@ -67,6 +71,7 @@ const ChatPage = () => {
   const [input, setInput] = useState("");
   const [isRouting, setIsRouting] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useAutoResize(input);
 
   const agent = selectedAgentId ? agentLookup[selectedAgentId] : null;
   const activeSession = sessions.find((s) => s.id === activeSessionId);
@@ -110,23 +115,16 @@ const ChatPage = () => {
     setSelectedAgentId(agentId);
   };
 
-  // 智能发送：根据问题内容自动路由到合适的 Agent
   const handleSmartSend = () => {
     const content = input.trim();
     if (!content) return;
-
     setIsRouting(true);
-
-    // 智能路由到最合适的 Agent
     const matchedAgentId = routeToAgent(content);
 
     setTimeout(() => {
       if (matchedAgentId) {
-        // 检查是否已有该 Agent 的会话
         let existingSession = sessions.find((s) => s.agentId === matchedAgentId);
-
         if (!existingSession) {
-          // 创建新会话
           const a = agentLookup[matchedAgentId];
           if (!a) return;
           const newSession: Session = {
@@ -139,21 +137,18 @@ const ChatPage = () => {
           setSessions((prev) => [newSession, ...prev]);
           existingSession = newSession;
         }
-
         setActiveSessionId(existingSession.id);
         setSelectedAgentId(matchedAgentId);
         setSearchParams({ agent: matchedAgentId });
         setInput("");
         setIsRouting(false);
 
-        // 添加用户消息
         const userMsg: Message = {
           id: Date.now().toString(),
           role: "user",
           content,
           timestamp: new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" }),
         };
-
         setSessions((prev) =>
           prev.map((s) =>
             s.id === existingSession!.id
@@ -161,8 +156,6 @@ const ChatPage = () => {
               : s
           )
         );
-
-        // 模拟 Agent 响应
         setTimeout(() => {
           const agentMsg: Message = {
             id: (Date.now() + 1).toString(),
@@ -192,7 +185,6 @@ const ChatPage = () => {
       content,
       timestamp: new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" }),
     };
-
     setSessions((prev) =>
       prev.map((s) =>
         s.id === activeSessionId
@@ -219,202 +211,184 @@ const ChatPage = () => {
     }, 800);
   };
 
-  // Landing: no agent selected
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      if (!agent || !activeSessionId) {
+        handleSmartSend();
+      } else {
+        handleSend();
+      }
+    }
+  };
+
+  // Suggestion chips for landing page
+  const suggestions = [
+    { icon: <Sparkles className="h-3.5 w-3.5" />, text: "帮我分析今日舆情动态" },
+    { icon: <Zap className="h-3.5 w-3.5" />, text: "诊断 K8s 集群异常" },
+    { icon: <MessageSquare className="h-3.5 w-3.5" />, text: "生成本周工作汇总" },
+    { icon: <Shield className="h-3.5 w-3.5" />, text: "帮我提交一个请假申请" },
+  ];
+
+  // ==================== LANDING PAGE ====================
   if (!agent || !activeSessionId) {
     return (
-      <div className="flex flex-col h-[calc(100vh-3.5rem)] overflow-y-auto">
-        {/* Hero Section */}
-        <div className="bg-gradient-to-b from-primary/5 to-transparent px-6 py-12">
-          <div className="max-w-4xl mx-auto text-center space-y-4">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 text-primary text-sm font-medium"
-            >
-              <Brain className="h-4 w-4" />
-              <span>智能路由，自动匹配专家 Agent</span>
-            </motion.div>
-            <motion.h1
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-              className="text-3xl md:text-4xl font-bold text-foreground"
-            >
-              有什么可以帮你的？
-            </motion.h1>
-            <motion.p
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="text-muted-foreground text-sm md:text-base max-w-xl mx-auto"
-            >
-              输入问题，系统将自动为你匹配最合适的专家 Agent
-            </motion.p>
+      <div className="flex flex-col h-[calc(100vh-3.5rem)] items-center justify-center relative overflow-hidden">
+        {/* Background subtle pattern */}
+        <div className="absolute inset-0 bg-gradient-to-b from-primary/[0.02] via-transparent to-transparent pointer-events-none" />
 
-            {/* Smart Input Box */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
-              className="max-w-2xl mx-auto mt-8"
-            >
-              <div className="flex items-center gap-2 p-2 rounded-xl bg-card border border-border/50 shadow-lg shadow-primary/5 focus-within:border-primary/30 focus-within:shadow-primary/10 transition-all">
-                <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                  <Brain className="h-5 w-5 text-primary" />
+        {/* Main content - vertically centered */}
+        <div className="w-full max-w-3xl mx-auto px-6 space-y-8 -mt-16">
+          {/* Title */}
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-center space-y-2"
+          >
+            <h1 className="text-3xl md:text-4xl font-bold text-foreground tracking-tight">
+              有什么可以帮你的？
+            </h1>
+            <p className="text-muted-foreground text-sm">
+              输入问题自动匹配专家 Agent，或选择下方 Agent 开始对话
+            </p>
+          </motion.div>
+
+          {/* Input container - Open WebUI style */}
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+          >
+            <div className="relative rounded-2xl bg-card border border-border/60 shadow-lg shadow-primary/[0.03] focus-within:border-primary/40 focus-within:shadow-primary/[0.08] transition-all duration-300">
+              {/* Textarea */}
+              <textarea
+                ref={textareaRef}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="输入任何问题..."
+                rows={1}
+                disabled={isRouting}
+                className="w-full resize-none bg-transparent px-5 pt-4 pb-14 text-sm md:text-base text-foreground placeholder:text-muted-foreground/60 focus:outline-none min-h-[56px] max-h-[200px]"
+              />
+
+              {/* Bottom toolbar */}
+              <div className="absolute bottom-0 left-0 right-0 flex items-center justify-between px-3 py-2.5">
+                <div className="flex items-center gap-1">
+                  <Button type="button" variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary/80">
+                    <Paperclip className="h-4 w-4" />
+                  </Button>
+                  <Button type="button" variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary/80">
+                    <Globe className="h-4 w-4" />
+                  </Button>
+                  <Button type="button" variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary/80">
+                    <Mic className="h-4 w-4" />
+                  </Button>
                 </div>
-                <Input
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey) {
-                      e.preventDefault();
-                      handleSmartSend();
-                    }
-                  }}
-                  placeholder="例如：帮我分析今日舆情、诊断集群问题、生成本周工作汇总..."
-                  className="flex-1 border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 h-auto text-sm"
-                  disabled={isRouting}
-                />
+
                 <Button
                   onClick={handleSmartSend}
                   disabled={!input.trim() || isRouting}
-                  className="h-9 px-4 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-30 flex-shrink-0"
+                  size="icon"
+                  className="h-8 w-8 rounded-lg bg-foreground text-background hover:bg-foreground/90 disabled:opacity-20 transition-all"
                 >
                   {isRouting ? (
-                    <motion.div
-                      animate={{ rotate: 360 }}
-                      transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                    >
+                    <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: "linear" }}>
                       <Sparkles className="h-4 w-4" />
                     </motion.div>
                   ) : (
-                    <Send className="h-4 w-4" />
+                    <ArrowUp className="h-4 w-4" />
                   )}
                 </Button>
               </div>
-
-              {/* Quick Suggestions */}
-              <div className="flex flex-wrap gap-2 mt-4 justify-center">
-                <Badge
-                  variant="outline"
-                  className="cursor-pointer hover:bg-primary/10 hover:border-primary/30 transition-colors py-2 px-3 text-xs"
-                  onClick={() => setInput("帮我分析今日舆情")}
-                >
-                  <Sparkles className="h-3 w-3 mr-1" />
-                  分析今日舆情
-                </Badge>
-                <Badge
-                  variant="outline"
-                  className="cursor-pointer hover:bg-primary/10 hover:border-primary/30 transition-colors py-2 px-3 text-xs"
-                  onClick={() => setInput("诊断集群问题")}
-                >
-                  <Zap className="h-3 w-3 mr-1" />
-                  诊断集群问题
-                </Badge>
-                <Badge
-                  variant="outline"
-                  className="cursor-pointer hover:bg-primary/10 hover:border-primary/30 transition-colors py-2 px-3 text-xs"
-                  onClick={() => setInput("生成本周工作汇总")}
-                >
-                  <MessageSquare className="h-3 w-3 mr-1" />
-                  生成工作汇总
-                </Badge>
-              </div>
-            </motion.div>
-          </div>
-        </div>
-
-        {/* Agent Grid */}
-        <div className="flex-1 px-6 py-8">
-          <div className="max-w-6xl mx-auto space-y-8">
-            {/* Platform Agents */}
-            <div>
-              <div className="flex items-center gap-2 mb-4">
-                <Zap className="h-5 w-5 text-primary" />
-                <h2 className="text-lg font-semibold text-foreground">平台 Agent</h2>
-                <Badge variant="secondary" className="ml-2">{platform.length} 个可用</Badge>
-              </div>
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {platform.map((a, i) => (
-                  <motion.button
-                    key={a.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.05 }}
-                    onClick={() => selectAgent(a.id)}
-                    className="group text-left p-5 rounded-2xl bg-card border border-border/50 hover:border-primary/50 hover:shadow-xl hover:shadow-primary/5 transition-all duration-300"
-                  >
-                    <div className="flex items-start gap-4 mb-3">
-                      <div className={`h-14 w-14 rounded-xl bg-gradient-to-br ${a.gradient} flex items-center justify-center text-3xl flex-shrink-0 group-hover:scale-110 transition-transform duration-300`}>
-                        {a.emoji}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-foreground truncate group-hover:text-primary transition-colors">{a.name}</h3>
-                        <div className="flex items-center gap-2 mt-1">
-                          <Badge variant="outline" className="text-xs">{a.category}</Badge>
-                          <span className="text-xs text-muted-foreground">{(a.calls / 1000).toFixed(1)}k 次调用</span>
-                        </div>
-                      </div>
-                    </div>
-                    <p className="text-xs text-muted-foreground line-clamp-2 mb-3 h-8">{a.description}</p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {a.capabilities?.slice(0, 3).map((cap) => (
-                        <span key={cap} className="text-xs px-2 py-1 rounded-md bg-secondary/50 text-secondary-foreground">
-                          {cap}
-                        </span>
-                      ))}
-                    </div>
-                    {a.expertise && (
-                      <div className="mt-3 pt-3 border-t border-border/50">
-                        <p className="text-xs text-emerald-500 flex items-center gap-1">
-                          <Shield className="h-3 w-3" />
-                          {a.expertise}
-                        </p>
-                      </div>
-                    )}
-                  </motion.button>
-                ))}
-              </div>
             </div>
+          </motion.div>
 
-            {/* My Agents */}
+          {/* Suggestion chips */}
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="flex flex-wrap gap-2 justify-center"
+          >
+            {suggestions.map((s, i) => (
+              <button
+                key={i}
+                onClick={() => { setInput(s.text); textareaRef.current?.focus(); }}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-border/60 bg-card/50 text-sm text-muted-foreground hover:text-foreground hover:border-primary/30 hover:bg-card transition-all duration-200"
+              >
+                {s.icon}
+                {s.text}
+              </button>
+            ))}
+          </motion.div>
+
+          {/* Agent grid - compact */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.3 }}
+            className="pt-4"
+          >
+            <div className="flex items-center gap-2 mb-4">
+              <h2 className="text-sm font-medium text-muted-foreground">选择 Agent 开始对话</h2>
+              <div className="flex-1 h-px bg-border/50" />
+            </div>
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {platform.slice(0, 6).map((a, i) => (
+                <motion.button
+                  key={a.id}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3 + i * 0.04 }}
+                  onClick={() => selectAgent(a.id)}
+                  className="group flex items-center gap-3 p-3 rounded-xl bg-card/60 border border-border/40 hover:border-primary/40 hover:bg-card hover:shadow-md transition-all duration-200 text-left"
+                >
+                  <div className={`h-10 w-10 rounded-xl bg-gradient-to-br ${a.gradient} flex items-center justify-center text-lg flex-shrink-0 group-hover:scale-105 transition-transform`}>
+                    {a.emoji}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h3 className="text-sm font-medium text-foreground truncate group-hover:text-primary transition-colors">{a.name}</h3>
+                    <p className="text-xs text-muted-foreground truncate">{a.description}</p>
+                  </div>
+                </motion.button>
+              ))}
+            </div>
             {mine.length > 0 && (
-              <div>
-                <div className="flex items-center gap-2 mb-4">
-                  <TrendingUp className="h-5 w-5 text-accent" />
-                  <h2 className="text-lg font-semibold text-foreground">我的 Agent</h2>
-                  <Badge variant="secondary" className="ml-2">{mine.length} 个可用</Badge>
+              <div className="mt-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <h2 className="text-sm font-medium text-muted-foreground">我的 Agent</h2>
+                  <div className="flex-1 h-px bg-border/50" />
                 </div>
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                   {mine.map((a, i) => (
                     <motion.button
                       key={a.id}
-                      initial={{ opacity: 0, y: 20 }}
+                      initial={{ opacity: 0, y: 8 }}
                       animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: i * 0.05 }}
+                      transition={{ delay: 0.4 + i * 0.04 }}
                       onClick={() => selectAgent(a.id)}
-                      className="group text-left p-5 rounded-2xl bg-card border border-border/50 hover:border-accent/50 hover:shadow-xl hover:shadow-accent/5 transition-all duration-300"
+                      className="group flex items-center gap-3 p-3 rounded-xl bg-card/60 border border-border/40 hover:border-accent/40 hover:bg-card hover:shadow-md transition-all duration-200 text-left"
                     >
-                      <div className="flex items-start gap-4">
-                        <div className="h-14 w-14 rounded-xl bg-gradient-to-br from-accent/20 to-accent/5 flex items-center justify-center text-3xl flex-shrink-0 group-hover:scale-110 transition-transform duration-300">
-                          {a.emoji}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-semibold text-foreground truncate group-hover:text-accent transition-colors">{a.name}</h3>
-                          <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{a.description}</p>
-                        </div>
+                      <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-accent/20 to-accent/5 flex items-center justify-center text-lg flex-shrink-0 group-hover:scale-105 transition-transform">
+                        {a.emoji}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <h3 className="text-sm font-medium text-foreground truncate group-hover:text-accent transition-colors">{a.name}</h3>
+                        <p className="text-xs text-muted-foreground truncate">{a.description}</p>
                       </div>
                     </motion.button>
                   ))}
                 </div>
               </div>
             )}
-          </div>
+          </motion.div>
         </div>
       </div>
     );
   }
 
+  // ==================== CHAT VIEW ====================
   return (
     <div className="flex h-[calc(100vh-3.5rem)]">
       {/* Session sidebar */}
@@ -503,7 +477,6 @@ const ChatPage = () => {
             </div>
           </div>
 
-          {/* Mobile agent switcher */}
           <div className="md:hidden">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -535,61 +508,88 @@ const ChatPage = () => {
         </div>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4">
-          <AnimatePresence>
-            {messages.map((msg) => (
-              <motion.div
-                key={msg.id}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                className={`flex gap-3 ${msg.role === "user" ? "flex-row-reverse" : ""}`}
-              >
-                <div className={`h-9 w-9 rounded-xl flex items-center justify-center flex-shrink-0 ${
-                  msg.role === "user" ? "bg-accent/15 text-accent" : "bg-primary/10 text-primary"
-                }`}>
-                  {msg.role === "user" ? <User className="h-5 w-5" /> : <Bot className="h-5 w-5" />}
-                </div>
-                <div className={`max-w-[75%] space-y-1 ${msg.role === "user" ? "items-end" : ""}`}>
-                  <div className={`rounded-2xl px-4 py-3 text-sm leading-relaxed ${
-                    msg.role === "user" ? "bg-primary/15 text-foreground rounded-tr-md" : "bg-secondary/60 text-foreground rounded-tl-md"
+        <div className="flex-1 overflow-y-auto px-4 py-6">
+          <div className="max-w-3xl mx-auto space-y-4">
+            <AnimatePresence>
+              {messages.map((msg) => (
+                <motion.div
+                  key={msg.id}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className={`flex gap-3 ${msg.role === "user" ? "flex-row-reverse" : ""}`}
+                >
+                  <div className={`h-8 w-8 rounded-full flex items-center justify-center flex-shrink-0 ${
+                    msg.role === "user" ? "bg-accent/15 text-accent" : "bg-primary/10 text-primary"
                   }`}>
-                    <p className="whitespace-pre-wrap">{msg.content}</p>
+                    {msg.role === "user" ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
                   </div>
-                  <span className="text-xs text-muted-foreground/50 px-1">{msg.timestamp}</span>
-                </div>
-              </motion.div>
-            ))}
-          </AnimatePresence>
-          <div ref={messagesEndRef} />
-        </div>
-
-        {/* Quick commands */}
-        <div className="px-4 pb-2">
-          <div className="flex flex-wrap gap-2">
-            {agent.quickCommands?.map((cmd) => (
-              <button key={cmd} onClick={() => handleSend(cmd)} className="text-xs px-3 py-1.5 rounded-full bg-secondary/50 border border-border/50 text-muted-foreground hover:text-primary hover:border-primary/30 transition-all">
-                {cmd}
-              </button>
-            ))}
+                  <div className={`max-w-[75%] space-y-1 ${msg.role === "user" ? "items-end" : ""}`}>
+                    <div className={`rounded-2xl px-4 py-3 text-sm leading-relaxed ${
+                      msg.role === "user" ? "bg-primary text-primary-foreground rounded-tr-md" : "bg-secondary/60 text-foreground rounded-tl-md"
+                    }`}>
+                      <p className="whitespace-pre-wrap">{msg.content}</p>
+                    </div>
+                    <span className="text-xs text-muted-foreground/50 px-1">{msg.timestamp}</span>
+                  </div>
+                </motion.div>
+              ))}
+            </AnimatePresence>
+            <div ref={messagesEndRef} />
           </div>
         </div>
 
-        {/* Input */}
+        {/* Quick commands */}
+        {agent.quickCommands && agent.quickCommands.length > 0 && (
+          <div className="px-4 pb-2">
+            <div className="max-w-3xl mx-auto flex flex-wrap gap-2">
+              {agent.quickCommands.map((cmd) => (
+                <button key={cmd} onClick={() => handleSend(cmd)} className="text-xs px-3 py-1.5 rounded-full bg-secondary/50 border border-border/50 text-muted-foreground hover:text-primary hover:border-primary/30 transition-all">
+                  {cmd}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Input - Open WebUI style */}
         <div className="px-4 pb-4 pt-2">
-          <form onSubmit={(e) => { e.preventDefault(); handleSend(); }} className="flex items-center gap-2 p-2 rounded-xl bg-secondary/40 border border-border/50 focus-within:border-primary/30 transition-colors">
-            <Button type="button" variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground h-8 w-8 flex-shrink-0">
-              <Paperclip className="h-4 w-4" />
-            </Button>
-            <Input
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder={`向 ${agent.name} 提问...`}
-              className="flex-1 border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 h-8 text-sm"
-            />
-            <Button type="submit" size="icon" disabled={!input.trim()} className="h-8 w-8 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-30 flex-shrink-0">
-              <Send className="h-4 w-4" />
-            </Button>
-          </form>
+          <div className="max-w-3xl mx-auto">
+            <div className="relative rounded-2xl bg-card border border-border/60 shadow-sm focus-within:border-primary/40 focus-within:shadow-md focus-within:shadow-primary/[0.05] transition-all duration-300">
+              <textarea
+                ref={textareaRef}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder={`向 ${agent.name} 提问...`}
+                rows={1}
+                className="w-full resize-none bg-transparent px-5 pt-3.5 pb-12 text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none min-h-[52px] max-h-[200px]"
+              />
+              <div className="absolute bottom-0 left-0 right-0 flex items-center justify-between px-3 py-2">
+                <div className="flex items-center gap-1">
+                  <Button type="button" variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary/80">
+                    <Paperclip className="h-4 w-4" />
+                  </Button>
+                  <Button type="button" variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary/80">
+                    <Globe className="h-4 w-4" />
+                  </Button>
+                  <Button type="button" variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary/80">
+                    <Mic className="h-4 w-4" />
+                  </Button>
+                </div>
+                <Button
+                  onClick={() => handleSend()}
+                  disabled={!input.trim()}
+                  size="icon"
+                  className="h-8 w-8 rounded-lg bg-foreground text-background hover:bg-foreground/90 disabled:opacity-20 transition-all"
+                >
+                  <ArrowUp className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+            <p className="text-[11px] text-muted-foreground/50 text-center mt-2">
+              Enter 发送 · Shift + Enter 换行
+            </p>
+          </div>
         </div>
       </div>
     </div>
