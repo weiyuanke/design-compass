@@ -494,7 +494,7 @@ const ChatPage = () => {
                 <span className="text-xs text-emerald-500 flex items-center gap-1">
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> 在线
                 </span>
-                {agent.capabilities && (
+                {'capabilities' in agent && agent.capabilities && (
                   <span className="text-xs text-muted-foreground hidden lg:inline">
                     · {agent.capabilities.slice(0, 3).join(" · ")}
                   </span>
