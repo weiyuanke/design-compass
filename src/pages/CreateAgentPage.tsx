@@ -16,8 +16,8 @@ const templateOptions = [
     name: "OpenClaw",
     emoji: "🦞",
     icon: MessageSquare,
-    desc: "自主 AI 智能体框架，将被动聊天机器人转变为主动执行复杂工作流的数字员工",
-    features: ["本地优先架构", "ReAct 智能循环", "持久化记忆", "ClawHub 技能市场", "心跳层定时任务"],
+    desc: "7×24 小时在线的专属智能体，一键部署、零门槛即刻唤醒你的个人助手，随时随地对话",
+    features: ["一键部署", "7×24 在线", "ReAct 智能循环", "持久化记忆", "ClawHub 技能市场", "心跳层定时任务"],
     gradient: "from-emerald-500/20 to-teal-500/5",
     color: "text-emerald-500",
     badge: "热门",
@@ -300,8 +300,7 @@ const CreateAgentPage = () => {
                           <span className="text-sm font-medium">OpenClaw 是什么？</span>
                         </div>
                         <p className="text-xs text-muted-foreground leading-relaxed">
-                          OpenClaw 是一个开源的自主 AI 智能体框架，由 Peter Steinberger 于 2025 年底发布。
-                          它将被动回答问题的聊天机器人，转变为能够主动执行复杂工作流的"数字员工"。
+                          OpenClaw 是一个开源的自主 AI 智能体框架。一键部署，零门槛即刻唤醒你的 7×24 小时在线专属助手——随时随地对话，让被动聊天机器人转变为能主动执行复杂工作流的"数字员工"。
                         </p>
                       </div>
 

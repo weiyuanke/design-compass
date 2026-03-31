@@ -427,7 +427,10 @@ const ConversationDetailPage = () => {
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-border/50 bg-card/50 backdrop-blur">
           <div className="flex items-center gap-3">
-            <div className={`h-10 w-10 rounded-xl bg-gradient-to-br ${agent?.gradient || 'from-emerald-500/20 to-teal-500/5'} flex items-center justify-center text-xl flex-shrink-0`}>
+            <Button variant="ghost" size="icon" className="h-8 w-8 mr-1" onClick={() => navigate("/chat")}>
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+            <div className={`h-10 w-10 rounded-xl bg-gradient-to-br ${'gradient' in (agent || {}) ? (agent as any).gradient : 'from-emerald-500/20 to-teal-500/5'} flex items-center justify-center text-xl flex-shrink-0`}>
               {agent?.emoji || "🎯"}
             </div>
             <div>
@@ -439,9 +442,9 @@ const ConversationDetailPage = () => {
                 <span className="text-xs text-emerald-500 flex items-center gap-1">
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> 在线
                 </span>
-                {agent?.capabilities && (
+                {'capabilities' in (agent || {}) && (
                   <span className="text-xs text-muted-foreground hidden lg:inline">
-                    · {agent.capabilities.slice(0, 3).join(" · ")}
+                    · {(agent as any).capabilities.slice(0, 3).join(" · ")}
                   </span>
                 )}
               </div>
