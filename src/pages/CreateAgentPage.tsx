@@ -300,8 +300,7 @@ const CreateAgentPage = () => {
                           <span className="text-sm font-medium">OpenClaw 是什么？</span>
                         </div>
                         <p className="text-xs text-muted-foreground leading-relaxed">
-                          OpenClaw 是一个开源的自主 AI 智能体框架，由 Peter Steinberger 于 2025 年底发布。
-                          它将被动回答问题的聊天机器人，转变为能够主动执行复杂工作流的"数字员工"。
+                          OpenClaw 是一个开源的自主 AI 智能体框架。一键部署，零门槛即刻唤醒你的 7×24 小时在线专属助手——随时随地对话，让被动聊天机器人转变为能主动执行复杂工作流的"数字员工"。
                         </p>
                       </div>
 
