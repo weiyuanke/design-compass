@@ -144,8 +144,16 @@ const CollaborationPage = () => {
               <TabsContent value="custom" className="space-y-4 mt-4">
                 <div className="text-center py-8">
                   <Users className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
-                  <p className="text-sm text-muted-foreground">自定义配置功能开发中</p>
-                  <p className="text-xs text-muted-foreground mt-1">请先选择预设模板</p>
+                  <p className="text-sm text-muted-foreground mb-4">自由组合 Agent 角色，配置协作模式和任务参数</p>
+                  <Button
+                    onClick={() => {
+                      setIsCreateOpen(false);
+                      navigate("/collaboration/new");
+                    }}
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    开始自定义配置
+                  </Button>
                 </div>
               </TabsContent>
             </Tabs>

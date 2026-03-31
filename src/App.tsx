@@ -54,6 +54,7 @@ const App = () => (
             <Route path="/knowledge-base" element={<KnowledgeBasePage />} />
             <Route path="/collaboration" element={<CollaborationPage />} />
             <Route path="/collaboration/detail" element={<CollaborationDetailPage />} />
+            <Route path="/collaboration/new" element={<CollaborationConfigPage />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
