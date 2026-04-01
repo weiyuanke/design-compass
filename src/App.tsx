@@ -25,6 +25,7 @@ import KnowledgeBasePage from "./pages/KnowledgeBasePage";
 import CollaborationPage from "./pages/CollaborationPage";
 import CollaborationDetailPage from "./pages/CollaborationDetailPage";
 import CollaborationConfigPage from "./pages/CollaborationConfigPage";
+import CollaborationStudioPage from "./pages/CollaborationStudioPage";
 
 const queryClient = new QueryClient();
 

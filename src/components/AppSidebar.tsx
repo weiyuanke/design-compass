@@ -52,6 +52,7 @@ const extensionNav = [
 // Multi-Agent Collaboration
 const collaborationNav = [
   { title: "多 Agent 协作", url: "/collaboration", icon: Users },
+  { title: "协作工作室", url: "/collaboration-studio", icon: Users },
 ];
 
 // Automation - Workflow, Scheduler, Notification
