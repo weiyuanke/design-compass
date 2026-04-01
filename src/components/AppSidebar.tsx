@@ -12,6 +12,7 @@ import {
   Cpu,
   Library,
   Users,
+  Sparkles,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -52,6 +53,7 @@ const extensionNav = [
 // Multi-Agent Collaboration
 const collaborationNav = [
   { title: "多 Agent 协作", url: "/collaboration", icon: Users },
+  { title: "协作工作室", url: "/collaboration-studio", icon: Sparkles },
 ];
 
 // Automation - Workflow, Scheduler, Notification
