@@ -26,6 +26,7 @@ import CollaborationPage from "./pages/CollaborationPage";
 import CollaborationDetailPage from "./pages/CollaborationDetailPage";
 import CollaborationConfigPage from "./pages/CollaborationConfigPage";
 import CollaborationStudioPage from "./pages/CollaborationStudioPage";
+import CollaborationStudioNewPage from "./pages/CollaborationStudioNewPage";
 
 const queryClient = new QueryClient();
 
@@ -57,6 +58,7 @@ const App = () => (
             <Route path="/collaboration/detail" element={<CollaborationDetailPage />} />
             <Route path="/collaboration/new" element={<CollaborationConfigPage />} />
             <Route path="/collaboration-studio" element={<CollaborationStudioPage />} />
+            <Route path="/collaboration-studio/new" element={<CollaborationStudioNewPage />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
