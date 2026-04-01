@@ -56,6 +56,7 @@ const App = () => (
             <Route path="/collaboration" element={<CollaborationPage />} />
             <Route path="/collaboration/detail" element={<CollaborationDetailPage />} />
             <Route path="/collaboration/new" element={<CollaborationConfigPage />} />
+            <Route path="/collaboration-studio" element={<CollaborationStudioPage />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
