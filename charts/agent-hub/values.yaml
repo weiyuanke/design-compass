@@ -1,7 +1,7 @@
 # 默认镜像：构建后推送到你的镜像仓库，并在此处覆盖 repository / tag
 image:
   repository: docker.io/weiyuanke/agent-hub
-  tag: 0.1
+  tag: 0.2
   pullPolicy: IfNotPresent
 
 imagePullSecrets: []
