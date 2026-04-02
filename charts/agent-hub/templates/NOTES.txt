@@ -1,0 +1,23 @@
+1. 获取应用访问地址：
+
+{{- if .Values.ingress.enabled }}
+{{- range $host := .Values.ingress.hosts }}
+  {{- range .paths }}
+  http{{ if $.Values.ingress.tls }}s{{ end }}://{{ $host.host }}{{ .path }}
+  {{- end }}
+{{- end }}
+{{- else if contains "NodePort" .Values.service.type }}
+  export NODE_PORT=$(kubectl get --namespace {{ .Release.Namespace }} -o jsonpath="{.spec.ports[0].nodePort}" services {{ include "agent-hub.fullname" . }})
+  export NODE_IP=$(kubectl get nodes -o jsonpath="{.items[0].status.addresses[0].address}")
+  echo http://$NODE_IP:$NODE_PORT
+{{- else if contains "LoadBalancer" .Values.service.type }}
+  等待 EXTERNAL-IP 就绪后访问：
+  kubectl get svc --namespace {{ .Release.Namespace }} -w {{ include "agent-hub.fullname" . }}
+{{- else if contains "ClusterIP" .Values.service.type }}
+  kubectl port-forward --namespace {{ .Release.Namespace }} svc/{{ include "agent-hub.fullname" . }} 8080:{{ .Values.service.port }}
+  然后访问: http://127.0.0.1:8080
+{{- end }}
+
+2. 镜像需已推送到集群可拉取的仓库，安装时覆盖例如：
+   helm upgrade --install my-release ./charts/agent-hub -n my-ns --create-namespace \
+     --set image.repository=YOUR_REGISTRY/agent-hub --set image.tag=YOUR_TAG

@@ -1,4 +1,4 @@
-# Design Compass
+# Agent Hub
 
 一个企业级 AI Agent 管理平台，提供完整的 Agent 生命周期管理、多 Agent 协作、知识库 RAG、MCP 集成等功能。
 
@@ -57,7 +57,7 @@
 ## 📦 项目结构
 
 ```
-design-compass/
+agent-hub/
 ├── src/
 │   ├── pages/              # 页面组件
 │   │   ├── HomePage.tsx
