@@ -48,6 +48,31 @@ spec:
           {{- end }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
+          {{- if .Values.kagent.enabled }}
+          env:
+            - name: VITE_KAGENT_BASE_URL
+              value: {{ .Values.kagent.baseUrl | quote }}
+            {{- if .Values.kagent.nextActionList }}
+            - name: VITE_KAGENT_NEXT_ACTION_LIST
+              value: {{ .Values.kagent.nextActionList | quote }}
+            {{- end }}
+            {{- if .Values.kagent.nextActionCreate }}
+            - name: VITE_KAGENT_NEXT_ACTION_CREATE
+              value: {{ .Values.kagent.nextActionCreate | quote }}
+            {{- end }}
+            {{- if .Values.kagent.userId }}
+            - name: VITE_KAGENT_USER_ID
+              value: {{ .Values.kagent.userId | quote }}
+            {{- end }}
+          {{- end }}
+          volumeMounts:
+            - name: nginx-config
+              mountPath: /etc/nginx/conf.d/default.conf
+              subPath: default.conf
+      volumes:
+        - name: nginx-config
+          configMap:
+            name: {{ include "agent-hub.fullname" . }}-nginx
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
