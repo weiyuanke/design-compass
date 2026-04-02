@@ -72,7 +72,7 @@ const ToolsPage = () => {
               <span className="text-xs text-muted-foreground">
                 <span className="font-medium text-foreground">{agent.calls.toLocaleString()}</span> 次调用
               </span>
-              <Button size="sm" variant="outline" className="gap-1.5 h-8 hover:bg-primary hover:text-primary-foreground hover:border-primary transition-colors" onClick={() => navigate(`/chat?agent=${agent.id}`)}>
+              <Button size="sm" variant="outline" className="gap-1.5 h-8 hover:bg-primary hover:text-primary-foreground hover:border-primary transition-colors" onClick={() => navigate(`/chat/session?agent=${agent.id}`)}>
                 <MessageSquare className="h-3.5 w-3.5" />
                 对话
               </Button>

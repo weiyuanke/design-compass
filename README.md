@@ -7,7 +7,7 @@
 ### Agent 管理
 - **创建 & 配置**：直观的 Agent 创建向导，支持自定义配置
 - **我的 Agent**：集中管理所有 Agent，查看状态和性能指标
-- **Agent 模板**：预设的 Agent 模板库，快速启动
+- **Agent 模板**：内置多种 Agent 模板，创建时快速选择
 
 ### 交互与协作
 - **聊天界面**：实时与 Agent 交互，支持多轮对话
@@ -61,7 +61,8 @@ agent-hub/
 ├── src/
 │   ├── pages/              # 页面组件
 │   │   ├── HomePage.tsx
-│   │   ├── ChatPage.tsx
+│   │   ├── LandingPage.tsx       # 聊天首页（欢迎页）
+│   │   ├── ChatSessionPage.tsx   # 聊天会话页
 │   │   ├── MyAgentsPage.tsx
 │   │   ├── CreateAgentPage.tsx
 │   │   ├── KnowledgeBasePage.tsx
@@ -74,7 +75,6 @@ agent-hub/
 │   │   ├── CollaborationPage.tsx
 │   │   ├── MonitorPage.tsx
 │   │   ├── SkillsPage.tsx
-│   │   ├── TemplatesPage.tsx
 │   │   ├── ToolsPage.tsx
 │   │   ├── SettingsPage.tsx
 │   │   └── NotFound.tsx
@@ -139,10 +139,10 @@ npm run test:watch
 | 页面 | 路由 | 功能描述 |
 |------|------|--------|
 | 首页 | `/` | 平台概览和快速导航 |
-| 聊天 | `/chat` | 与 Agent 实时交互 |
+| 聊天首页 | `/chat` | 聊天欢迎页，选择 Agent 或输入问题 |
+| 聊天会话 | `/chat/session` | 与 Agent 实时对话 |
 | 我的 Agent | `/my-agents` | 查看和管理所有 Agent |
-| 创建 Agent | `/create` | 创建新的 Agent |
-| 模板 | `/templates` | 浏览 Agent 模板库 |
+| 创建 Agent | `/create` | 创建新的 Agent（内置模板选择） |
 | 工具 | `/tools` | 工具库和插件管理 |
 | MCP | `/mcp` | MCP 服务器管理 |
 | MCP 部署 | `/mcp/deploy` | 部署新的 MCP 服务器 |

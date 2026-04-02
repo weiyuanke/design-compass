@@ -5,9 +5,9 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppLayout } from "@/components/AppLayout";
 import HomePage from "./pages/HomePage";
-import ChatPage from "./pages/ChatPage";
+import LandingPage from "./pages/LandingPage";
+import ChatSessionPage from "./pages/ChatSessionPage";
 import ConversationDetailPage from "./pages/ConversationDetailPage";
-import TemplatesPage from "./pages/TemplatesPage";
 import MyAgentsPage from "./pages/MyAgentsPage";
 import ToolsPage from "./pages/ToolsPage";
 import McpPage from "./pages/McpPage";
@@ -39,9 +39,9 @@ const App = () => (
         <AppLayout>
           <Routes>
             <Route path="/" element={<HomePage />} />
-            <Route path="/chat" element={<ChatPage />} />
+            <Route path="/chat" element={<LandingPage />} />
+            <Route path="/chat/session" element={<ChatSessionPage />} />
             <Route path="/conversation" element={<ConversationDetailPage />} />
-            <Route path="/templates" element={<TemplatesPage />} />
             <Route path="/tools" element={<ToolsPage />} />
             <Route path="/mcp" element={<McpPage />} />
             <Route path="/mcp/deploy" element={<DeployMcpPage />} />
