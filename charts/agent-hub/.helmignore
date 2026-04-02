@@ -1,4 +1,0 @@
-# Patterns to ignore when packaging chart.
-.DS_Store
-.git
-*.tgz

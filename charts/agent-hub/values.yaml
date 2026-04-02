@@ -1,90 +1,83 @@
-# 默认镜像：构建后推送到你的镜像仓库，并在此处覆盖 repository / tag
+# Default values for agent-hub
+
+# 镜像配置
 image:
   repository: docker.io/weiyuanke/agent-hub
-  tag: 0.3
+  tag: "1.0"
   pullPolicy: IfNotPresent
 
-imagePullSecrets: []
+# Kagent API 配置
+kagent:
+  # Kagent Controller 服务地址
+  baseUrl: "http://192.168.3.211:8083"
+  # 用户 ID
+  userId: "admin@kagent.dev"
 
-nameOverride: ""
-fullnameOverride: ""
+# 副本数
+replicaCount: 1
 
-replicaCount: 2
-
-podAnnotations: {}
-podLabels: {}
-
-# podSecurityContext:
-#   fsGroup: 2000
-podSecurityContext: {}
-
-# securityContext:
-#   capabilities:
-#     drop:
-#       - ALL
-#   readOnlyRootFilesystem: true
-#   runAsNonRoot: true
-#   runAsUser: 1000
-securityContext: {}
-
+# 服务配置
 service:
   type: ClusterIP
   port: 80
   annotations: {}
 
+# Ingress 配置
 ingress:
   enabled: false
   className: ""
   annotations: {}
   hosts:
-    - host: agent-hub.example.com
+    - host: agent-hub.local
       paths:
         - path: /
           pathType: Prefix
   tls: []
 
+# 资源限制
 resources:
   limits:
-    cpu: 200m
-    memory: 128Mi
+    cpu: 500m
+    memory: 256Mi
   requests:
-    cpu: 50m
-    memory: 64Mi
+    cpu: 100m
+    memory: 128Mi
 
-nodeSelector: {}
-tolerations: []
-affinity: {}
-
-# HTTP 探针路径（nginx 默认返回 index.html）
+# 健康检查
 livenessProbe:
   httpGet:
     path: /
     port: http
-  initialDelaySeconds: 5
+  initialDelaySeconds: 10
   periodSeconds: 10
 
 readinessProbe:
   httpGet:
     path: /
     port: http
-  initialDelaySeconds: 3
+  initialDelaySeconds: 5
   periodSeconds: 5
 
-autoscaling:
-  enabled: false
-  minReplicas: 2
-  maxReplicas: 10
-  targetCPUUtilizationPercentage: 80
+# 节点亲和性
+nodeSelector: {}
 
+tolerations: []
+
+affinity: {}
+
+# Pod 注解
+podAnnotations: {}
+
+# Pod 标签
+podLabels: {}
+
+# 安全上下文
+podSecurityContext: {}
+
+securityContext: {}
+
+# 服务账号
 serviceAccount:
   create: true
   annotations: {}
   name: ""
-
-# Kagent (k8s-agent) 配置 - 对接 kagent-controller
-kagent:
-  enabled: false
-  # Kagent Controller 服务根 URL，如 http://192.168.3.211:8083
-  baseUrl: ""
-  # 默认用户 ID
-  userId: "admin@kagent.dev"

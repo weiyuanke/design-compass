@@ -1,6 +1,6 @@
 apiVersion: v2
 name: agent-hub
-description: Agent Hub 前端（Vite + React）静态站点，支持可选的 kagent (k8s-agent) 集成
+description: Agent Hub - AI Agent Management Platform
 type: application
-version: 0.3.0
-appVersion: "0.0.0"
+version: 1.0.0
+appVersion: "1.0"
