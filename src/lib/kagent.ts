@@ -1,10 +1,27 @@
 /**
  * Kagent (k8s-agent) HTTP client — 对接 kagent-controller 的 A2A JSON-RPC API.
  * Configure VITE_KAGENT_BASE_URL env var; see vite-env.d.ts.
+ * 
+ * 运行时配置：支持通过 window.APP_CONFIG 动态配置（用于 Docker 部署场景）
  */
 
 const KAGENT_NAMESPACE = "kagent";
 const KAGENT_AGENT_SLUG = "k8s-agent";
+
+/** 获取运行时配置，优先从 window.APP_CONFIG 读取，其次从 import.meta.env 读取 */
+function getRuntimeConfig(key: string): string | undefined {
+  // 优先从 window.APP_CONFIG 读取（运行时注入）
+  if (typeof window !== "undefined" && (window as Record<string, unknown>).APP_CONFIG) {
+    const appConfig = (window as Record<string, unknown>).APP_CONFIG as Record<string, string>;
+    const value = appConfig[key];
+    if (value && !value.startsWith("${")) {
+      return value.trim();
+    }
+  }
+  // 其次从 import.meta.env 读取（构建时注入）
+  const envValue = (import.meta.env as Record<string, string>)[key];
+  return envValue?.trim();
+}
 
 /** 获取 Agent Card API 路径 */
 function agentCardPath(): string {
@@ -22,7 +39,7 @@ function a2aPath(): string {
  * 生产构建仍直接使用 `VITE_KAGENT_BASE_URL`（需在网关或 Kagent 侧放行 CORS）。
  */
 function getBaseUrl(): string {
-  const raw = import.meta.env.VITE_KAGENT_BASE_URL?.trim().replace(/\/$/, "") ?? "";
+  const raw = getRuntimeConfig("VITE_KAGENT_BASE_URL")?.replace(/\/$/, "") ?? "";
   if (!raw) return "";
   if (raw.startsWith("/")) return raw;
   if (import.meta.env.DEV && /^https?:\/\//i.test(raw)) {
@@ -44,7 +61,7 @@ export function isKagentConfigured(): boolean {
 }
 
 function kagentUserId(): string {
-  return import.meta.env.VITE_KAGENT_USER_ID?.trim() || "admin@kagent.dev";
+  return getRuntimeConfig("VITE_KAGENT_USER_ID") || "admin@kagent.dev";
 }
 
 /** Agent Card 信息 */
