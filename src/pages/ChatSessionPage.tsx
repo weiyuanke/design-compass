@@ -252,7 +252,7 @@ const ChatSessionPage = () => {
       const placeholder: Message = {
         id: agentMsgId,
         role: "agent",
-        content: "正在连接 Kagent…",
+        content: "…",
         timestamp: ts,
       };
       setSessions((prev) =>
