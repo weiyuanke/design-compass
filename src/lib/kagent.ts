@@ -91,7 +91,14 @@ export async function fetchAgentCard(): Promise<KagentAgentCard> {
 }
 
 export interface StreamKagentCallbacks {
+  /** 最终文本内容（流式输出） */
   onAgentText?: (text: string, done: boolean) => void;
+  /** 中间状态更新（如 "正在分析...", "执行命令中..."） */
+  onStatusUpdate?: (status: string, state?: string) => void;
+  /** 任务事件（如 "正在思考", "正在执行命令"） */
+  onTaskUpdate?: (message: string, kind?: string) => void;
+  /** task_status_update 事件（包含状态详情） */
+  onTaskStatusUpdate?: (status: string, state?: string, final?: boolean) => void;
   onError?: (err: Error) => void;
 }
 
@@ -116,6 +123,55 @@ function extractAgentTextFromPayload(parsed: Record<string, unknown>): string | 
       return st.message.parts.map((p) => p.text).filter(Boolean).join("") || null;
     }
   }
+  return null;
+}
+
+/** 从 status-update 中提取状态消息 */
+function extractStatusFromPayload(parsed: Record<string, unknown>): { status: string; state?: string } | null {
+  const result = parsed.result as Record<string, unknown> | undefined;
+  if (!result) return null;
+
+  if (result.kind === "status-update" && result.status && typeof result.status === "object") {
+    const st = result.status as {
+      state?: string;
+      message?: { role?: string; parts?: { text?: string }[] };
+    };
+    const statusMsg = st.message?.parts?.map((p) => p.text).filter(Boolean).join("") || "";
+    if (statusMsg || st.state) {
+      return { status: statusMsg, state: st.state };
+    }
+  }
+  return null;
+}
+
+/** 从任何类型的响应中提取任务相关消息 */
+function extractTaskMessage(parsed: Record<string, unknown>): { message: string; kind?: string } | null {
+  const result = parsed.result as Record<string, unknown> | undefined;
+  if (!result) return null;
+
+  // 处理 status-update 类型（包含 agent 消息）
+  if (result.kind === "status-update" && result.status && typeof result.status === "object") {
+    const st = result.status as {
+      message?: { role?: string; parts?: { text?: string }[] };
+    };
+    // 如果消息不是 agent 角色，也可能是任务事件
+    if (st.message?.parts?.length) {
+      const msg = st.message.parts.map((p) => p.text).filter(Boolean).join("");
+      if (msg) {
+        return { message: msg, kind: result.kind as string };
+      }
+    }
+  }
+
+  // 处理 message 类型（直接的消息）
+  if (result.kind === "message" && typeof result.parts === "object") {
+    const parts = result.parts as { kind?: string; text?: string }[];
+    const msg = parts.map((p) => p.text).filter(Boolean).join("");
+    if (msg) {
+      return { message: msg, kind: result.kind as string };
+    }
+  }
+
   return null;
 }
 
@@ -228,7 +284,31 @@ export async function streamKagentMessage(
         }
 
         const text = extractAgentTextFromPayload(parsed);
+        const statusInfo = extractStatusFromPayload(parsed);
+        const taskMsg = extractTaskMessage(parsed);
         const streamDone = isStreamFinished(parsed, eventName);
+
+        // 触发状态更新回调
+        if (statusInfo && (statusInfo.status || statusInfo.state)) {
+          cbs.onStatusUpdate?.(statusInfo.status, statusInfo.state);
+        }
+
+        // 触发任务事件回调（当没有提取到文本但有任务消息时）
+        if (taskMsg && !text) {
+          cbs.onTaskUpdate?.(taskMsg.message, taskMsg.kind);
+        }
+
+        // 触发 task_status_update 事件回调
+        if (eventName === "task_status_update" && (parsed.result as Record<string, unknown>)?.kind === "status-update") {
+          const resultData = parsed.result as Record<string, unknown>;
+          const st = resultData.status as { state?: string; message?: { parts?: { text?: string }[] } } | undefined;
+          const taskStatusMsg = st?.message?.parts?.map((p) => p.text).filter(Boolean).join("") || "";
+          if (taskStatusMsg || st?.state) {
+            const isFinal = resultData.final === true && st?.state === "completed";
+            cbs.onTaskStatusUpdate?.(taskStatusMsg, st?.state, isFinal);
+          }
+        }
+
         if (text) {
           cbs.onAgentText?.(text, streamDone);
         } else if (streamDone) {

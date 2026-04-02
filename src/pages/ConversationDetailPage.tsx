@@ -491,21 +491,21 @@ const ConversationDetailPage = () => {
 
         {/* Messages */}
         <div className="flex-1 overflow-y-auto px-4 py-6">
-          <div className="max-w-3xl mx-auto space-y-4">
+          <div className="mx-auto space-y-4 max-w-full">
             <AnimatePresence>
               {messages.map((msg) => (
                 <motion.div
                   key={msg.id}
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className={`flex gap-3 ${msg.role === "user" ? "flex-row-reverse" : ""}`}
+                  className={`flex gap-4 ${msg.role === "user" ? "flex-row-reverse" : ""}`}
                 >
                   <div className={`h-8 w-8 rounded-full flex items-center justify-center flex-shrink-0 ${
                     msg.role === "user" ? "bg-accent/15 text-accent" : "bg-primary/10 text-primary"
                   }`}>
                     {msg.role === "user" ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
                   </div>
-                  <div className={`max-w-[75%] space-y-1 ${msg.role === "user" ? "items-end" : ""}`}>
+                  <div className={`max-w-[95%] space-y-1 ${msg.role === "user" ? "items-end" : ""}`}>
                     <div className={`rounded-2xl px-4 py-3 text-sm leading-relaxed ${
                       msg.role === "user" ? "bg-primary text-primary-foreground rounded-tr-md" : "bg-secondary/60 text-foreground rounded-tl-md"
                     }`}>
@@ -539,7 +539,7 @@ const ConversationDetailPage = () => {
         {/* Quick commands */}
         {agent?.quickCommands && agent.quickCommands.length > 0 && (
           <div className="px-4 pb-2">
-            <div className="max-w-3xl mx-auto flex flex-wrap gap-2">
+            <div className="mx-auto flex flex-wrap gap-2 max-w-full">
               {agent.quickCommands.map((cmd) => (
                 <button key={cmd} onClick={() => handleSend(cmd)} className="text-xs px-3 py-1.5 rounded-full bg-secondary/50 border border-border/50 text-muted-foreground hover:text-primary hover:border-primary/30 transition-all">
                   {cmd}
@@ -551,7 +551,7 @@ const ConversationDetailPage = () => {
 
         {/* Input */}
         <div className="px-4 pb-4 pt-2">
-          <div className="max-w-3xl mx-auto">
+          <div className="mx-auto max-w-full">
             <div className="relative rounded-2xl bg-card border border-border/60 shadow-sm focus-within:border-primary/40 focus-within:shadow-md focus-within:shadow-primary/[0.05] transition-all duration-300">
               <textarea
                 ref={textareaRef}
