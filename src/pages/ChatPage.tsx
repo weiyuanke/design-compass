@@ -6,6 +6,15 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { getAllChatAgents } from "@/data/agents";
+import { toast } from "sonner";
+import {
+  isKagentConfigured,
+  kagentHasCreateAction,
+  kagentHasListAction,
+  fetchKagentSessions,
+  createKagentSession,
+  streamKagentMessage,
+} from "@/lib/kagent";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,6 +23,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
+import { ChatMarkdown } from "@/components/ChatMarkdown";
 
 interface Message {
   id: string;
@@ -32,6 +42,15 @@ interface Session {
 
 const { platform, mine, all } = getAllChatAgents();
 const agentLookup = Object.fromEntries(all.map((a) => [a.id, a]));
+const K8S_OPS_ID = "k8s-ops";
+
+function k8sKagentWelcomeContent(): string {
+  return "已连接 Kagent Kubernetes 助手。请输入集群相关问题（Pod、节点、Deployment 等）。";
+}
+
+function isK8sKagentBackendEnabled(): boolean {
+  return isKagentConfigured() && kagentHasCreateAction();
+}
 
 const routeToAgent = (question: string): string | null => {
   const q = question.toLowerCase();
@@ -71,8 +90,11 @@ const ChatPage = () => {
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [input, setInput] = useState("");
   const [isRouting, setIsRouting] = useState(false);
+  const [kagentBootstrapping, setKagentBootstrapping] = useState(false);
+  const streamAbortRef = useRef<AbortController | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useAutoResize(input);
+  const k8sKagent = isK8sKagentBackendEnabled();
 
   const agent = selectedAgentId ? agentLookup[selectedAgentId] : null;
   const activeSession = sessions.find((s) => s.id === activeSessionId);
@@ -84,17 +106,18 @@ const ChatPage = () => {
 
   useEffect(() => {
     if (initialAgentId && agentLookup[initialAgentId] && sessions.length === 0) {
-      createSession(initialAgentId);
+      void bootstrapInitialSession(initialAgentId);
     }
   }, []);
 
   const selectAgent = (agentId: string) => {
     setSelectedAgentId(agentId);
     setSearchParams({ agent: agentId });
-    createSession(agentId);
+    void bootstrapInitialSession(agentId);
   };
 
-  const createSession = (agentId: string) => {
+  /** Local-only session (mock or non-k8s kagent) */
+  const createLocalSession = (agentId: string) => {
     const a = agentLookup[agentId];
     if (!a) return;
     const newSession: Session = {
@@ -106,7 +129,10 @@ const ChatPage = () => {
         {
           id: "welcome",
           role: "agent",
-          content: `你好！我是${a.name}，${a.description}。有什么可以帮你的吗？`,
+          content:
+            agentId === K8S_OPS_ID && k8sKagent
+              ? k8sKagentWelcomeContent()
+              : `你好！我是${a.name}，${a.description}。有什么可以帮你的吗？`,
           timestamp: new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" }),
         },
       ],
@@ -114,6 +140,88 @@ const ChatPage = () => {
     setSessions((prev) => [newSession, ...prev]);
     setActiveSessionId(newSession.id);
     setSelectedAgentId(agentId);
+  };
+
+  const createRemoteK8sSession = async (agentId: string) => {
+    const a = agentLookup[agentId];
+    if (!a) return;
+    setKagentBootstrapping(true);
+    try {
+      const title = `与 ${a.name} · ${new Date().toLocaleString("zh-CN", { hour: "2-digit", minute: "2-digit" })}`;
+      const row = await createKagentSession(title);
+      const newSession: Session = {
+        id: row.id,
+        agentId,
+        title: row.name || title,
+        updatedAt: new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" }),
+        messages: [
+          {
+            id: "welcome",
+            role: "agent",
+            content: k8sKagentWelcomeContent(),
+            timestamp: new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" }),
+          },
+        ],
+      };
+      setSessions((prev) => [newSession, ...prev]);
+      setActiveSessionId(newSession.id);
+      setSelectedAgentId(agentId);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "创建 Kagent 会话失败");
+      createLocalSession(agentId);
+    } finally {
+      setKagentBootstrapping(false);
+    }
+  };
+
+  const bootstrapInitialSession = async (agentId: string) => {
+    const a = agentLookup[agentId];
+    if (!a) return;
+
+    if (agentId === K8S_OPS_ID && k8sKagent) {
+      if (kagentHasListAction()) {
+        setKagentBootstrapping(true);
+        try {
+          const rows = await fetchKagentSessions();
+          if (rows.length > 0) {
+            const mapped: Session[] = rows.map((r) => ({
+              id: r.id,
+              agentId: K8S_OPS_ID,
+              title: r.name || `会话 ${r.id.slice(0, 8)}…`,
+              updatedAt: new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" }),
+              messages: [
+                {
+                  id: "welcome",
+                  role: "agent",
+                  content: k8sKagentWelcomeContent(),
+                  timestamp: new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" }),
+                },
+              ],
+            }));
+            setSessions(mapped);
+            setActiveSessionId(rows[0].id);
+            setSelectedAgentId(agentId);
+            return;
+          }
+        } catch (e) {
+          toast.error(e instanceof Error ? e.message : "加载远程会话失败");
+        } finally {
+          setKagentBootstrapping(false);
+        }
+      }
+      await createRemoteK8sSession(agentId);
+      return;
+    }
+
+    createLocalSession(agentId);
+  };
+
+  const createSession = (agentId: string) => {
+    if (agentId === K8S_OPS_ID && k8sKagent) {
+      void createRemoteK8sSession(agentId);
+      return;
+    }
+    createLocalSession(agentId);
   };
 
   const handleSmartSend = () => {
@@ -125,7 +233,7 @@ const ChatPage = () => {
     navigate(`/conversation${agentParam}`, { state: { initialMessage: content } });
   };
 
-  const handleSend = (text?: string) => {
+  const handleSend = async (text?: string) => {
     const content = text || input.trim();
     if (!content || !activeSessionId) return;
 
@@ -135,14 +243,75 @@ const ChatPage = () => {
       content,
       timestamp: new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" }),
     };
+    const sid = activeSessionId;
+
     setSessions((prev) =>
       prev.map((s) =>
-        s.id === activeSessionId
-          ? { ...s, messages: [...s.messages, userMsg], updatedAt: userMsg.timestamp }
-          : s
+        s.id === sid ? { ...s, messages: [...s.messages, userMsg], updatedAt: userMsg.timestamp } : s
       )
     );
     setInput("");
+
+    if (selectedAgentId === K8S_OPS_ID && k8sKagent) {
+      if (!sid.startsWith("ctx-")) {
+        toast.error("当前会话不是有效的 Kagent 会话，请新建对话。");
+        return;
+      }
+      streamAbortRef.current?.abort();
+      const ac = new AbortController();
+      streamAbortRef.current = ac;
+
+      const agentMsgId = `agent-${Date.now()}`;
+      const ts = new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" });
+      const placeholder: Message = {
+        id: agentMsgId,
+        role: "agent",
+        content: "正在连接 Kagent…",
+        timestamp: ts,
+      };
+      setSessions((prev) =>
+        prev.map((s) =>
+          s.id === sid ? { ...s, messages: [...s.messages, placeholder], updatedAt: ts } : s
+        )
+      );
+
+      await streamKagentMessage(
+        sid,
+        content,
+        {
+          onAgentText: (t, _done) => {
+            setSessions((prev) =>
+              prev.map((s) => {
+                if (s.id !== sid) return s;
+                return {
+                  ...s,
+                  messages: s.messages.map((m) =>
+                    m.id === agentMsgId ? { ...m, content: t || m.content } : m
+                  ),
+                  updatedAt: new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" }),
+                };
+              })
+            );
+          },
+          onError: (err) => {
+            toast.error(err.message);
+            setSessions((prev) =>
+              prev.map((s) => {
+                if (s.id !== sid) return s;
+                return {
+                  ...s,
+                  messages: s.messages.map((m) =>
+                    m.id === agentMsgId ? { ...m, content: `请求失败：${err.message}` } : m
+                  ),
+                };
+              })
+            );
+          },
+        },
+        ac.signal
+      );
+      return;
+    }
 
     setTimeout(() => {
       const agentMsg: Message = {
@@ -153,9 +322,7 @@ const ChatPage = () => {
       };
       setSessions((prev) =>
         prev.map((s) =>
-          s.id === activeSessionId
-            ? { ...s, messages: [...s.messages, agentMsg], updatedAt: agentMsg.timestamp }
-            : s
+          s.id === sid ? { ...s, messages: [...s.messages, agentMsg], updatedAt: agentMsg.timestamp } : s
         )
       );
     }, 800);
@@ -167,7 +334,7 @@ const ChatPage = () => {
       if (!agent || !activeSessionId) {
         handleSmartSend();
       } else {
-        handleSend();
+        void handleSend();
       }
     }
   };
@@ -238,7 +405,7 @@ const ChatPage = () => {
 
                 <Button
                   onClick={handleSmartSend}
-                  disabled={!input.trim() || isRouting}
+                  disabled={!input.trim() || isRouting || kagentBootstrapping}
                   size="icon"
                   className="h-8 w-8 rounded-lg bg-foreground text-background hover:bg-foreground/90 disabled:opacity-20 transition-all"
                 >
@@ -477,7 +644,11 @@ const ChatPage = () => {
                     <div className={`rounded-2xl px-4 py-3 text-sm leading-relaxed ${
                       msg.role === "user" ? "bg-primary text-primary-foreground rounded-tr-md" : "bg-secondary/60 text-foreground rounded-tl-md"
                     }`}>
-                      <p className="whitespace-pre-wrap">{msg.content}</p>
+                      {msg.role === "user" ? (
+                        <p className="whitespace-pre-wrap">{msg.content}</p>
+                      ) : (
+                        <ChatMarkdown content={msg.content} variant="agent" />
+                      )}
                     </div>
                     <span className="text-xs text-muted-foreground/50 px-1">{msg.timestamp}</span>
                   </div>
@@ -493,7 +664,7 @@ const ChatPage = () => {
           <div className="px-4 pb-2">
             <div className="max-w-3xl mx-auto flex flex-wrap gap-2">
               {agent.quickCommands.map((cmd) => (
-                <button key={cmd} onClick={() => handleSend(cmd)} className="text-xs px-3 py-1.5 rounded-full bg-secondary/50 border border-border/50 text-muted-foreground hover:text-primary hover:border-primary/30 transition-all">
+                <button key={cmd} onClick={() => void handleSend(cmd)} className="text-xs px-3 py-1.5 rounded-full bg-secondary/50 border border-border/50 text-muted-foreground hover:text-primary hover:border-primary/30 transition-all">
                   {cmd}
                 </button>
               ))}
@@ -527,8 +698,8 @@ const ChatPage = () => {
                   </Button>
                 </div>
                 <Button
-                  onClick={() => handleSend()}
-                  disabled={!input.trim()}
+                  onClick={() => void handleSend()}
+                  disabled={!input.trim() || kagentBootstrapping}
                   size="icon"
                   className="h-8 w-8 rounded-lg bg-foreground text-background hover:bg-foreground/90 disabled:opacity-20 transition-all"
                 >

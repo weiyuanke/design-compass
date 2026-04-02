@@ -15,6 +15,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
+import { ChatMarkdown } from "@/components/ChatMarkdown";
 
 interface Message {
   id: string;
@@ -508,7 +509,11 @@ const ConversationDetailPage = () => {
                     <div className={`rounded-2xl px-4 py-3 text-sm leading-relaxed ${
                       msg.role === "user" ? "bg-primary text-primary-foreground rounded-tr-md" : "bg-secondary/60 text-foreground rounded-tl-md"
                     }`}>
-                      <p className="whitespace-pre-wrap">{msg.content}</p>
+                      {msg.role === "user" ? (
+                        <p className="whitespace-pre-wrap">{msg.content}</p>
+                      ) : (
+                        <ChatMarkdown content={msg.content} variant="agent" />
+                      )}
                       {msg.invokedAgents && msg.invokedAgents.length > 0 && (
                         <div className="mt-2 flex flex-wrap gap-1">
                           {msg.invokedAgents.map((id) => {
