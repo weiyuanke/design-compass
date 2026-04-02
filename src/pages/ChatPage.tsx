@@ -9,10 +9,6 @@ import { getAllChatAgents } from "@/data/agents";
 import { toast } from "sonner";
 import {
   isKagentConfigured,
-  kagentHasCreateAction,
-  kagentHasListAction,
-  fetchKagentSessions,
-  createKagentSession,
   streamKagentMessage,
 } from "@/lib/kagent";
 import {
@@ -49,7 +45,7 @@ function k8sKagentWelcomeContent(): string {
 }
 
 function isK8sKagentBackendEnabled(): boolean {
-  return isKagentConfigured() && kagentHasCreateAction();
+  return isKagentConfigured();
 }
 
 const routeToAgent = (question: string): string | null => {
@@ -146,32 +142,26 @@ const ChatPage = () => {
     const a = agentLookup[agentId];
     if (!a) return;
     setKagentBootstrapping(true);
-    try {
-      const title = `与 ${a.name} · ${new Date().toLocaleString("zh-CN", { hour: "2-digit", minute: "2-digit" })}`;
-      const row = await createKagentSession(title);
-      const newSession: Session = {
-        id: row.id,
-        agentId,
-        title: row.name || title,
-        updatedAt: new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" }),
-        messages: [
-          {
-            id: "welcome",
-            role: "agent",
-            content: k8sKagentWelcomeContent(),
-            timestamp: new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" }),
-          },
-        ],
-      };
-      setSessions((prev) => [newSession, ...prev]);
-      setActiveSessionId(newSession.id);
-      setSelectedAgentId(agentId);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "创建 Kagent 会话失败");
-      createLocalSession(agentId);
-    } finally {
-      setKagentBootstrapping(false);
-    }
+    // 新会话：生成随机 contextId（以 ctx- 开头）
+    const contextId = `ctx-${crypto.randomUUID()}`;
+    const newSession: Session = {
+      id: contextId,
+      agentId,
+      title: `与 ${a.name} · ${new Date().toLocaleString("zh-CN", { hour: "2-digit", minute: "2-digit" })}`,
+      updatedAt: new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" }),
+      messages: [
+        {
+          id: "welcome",
+          role: "agent",
+          content: k8sKagentWelcomeContent(),
+          timestamp: new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" }),
+        },
+      ],
+    };
+    setSessions((prev) => [newSession, ...prev]);
+    setActiveSessionId(newSession.id);
+    setSelectedAgentId(agentId);
+    setKagentBootstrapping(false);
   };
 
   const bootstrapInitialSession = async (agentId: string) => {
@@ -179,36 +169,6 @@ const ChatPage = () => {
     if (!a) return;
 
     if (agentId === K8S_OPS_ID && k8sKagent) {
-      if (kagentHasListAction()) {
-        setKagentBootstrapping(true);
-        try {
-          const rows = await fetchKagentSessions();
-          if (rows.length > 0) {
-            const mapped: Session[] = rows.map((r) => ({
-              id: r.id,
-              agentId: K8S_OPS_ID,
-              title: r.name || `会话 ${r.id.slice(0, 8)}…`,
-              updatedAt: new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" }),
-              messages: [
-                {
-                  id: "welcome",
-                  role: "agent",
-                  content: k8sKagentWelcomeContent(),
-                  timestamp: new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" }),
-                },
-              ],
-            }));
-            setSessions(mapped);
-            setActiveSessionId(rows[0].id);
-            setSelectedAgentId(agentId);
-            return;
-          }
-        } catch (e) {
-          toast.error(e instanceof Error ? e.message : "加载远程会话失败");
-        } finally {
-          setKagentBootstrapping(false);
-        }
-      }
       await createRemoteK8sSession(agentId);
       return;
     }

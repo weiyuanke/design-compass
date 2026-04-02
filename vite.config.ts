@@ -11,7 +11,7 @@ export default defineConfig(({ mode }) => {
   const kagentProxyTarget =
     env.VITE_KAGENT_PROXY_TARGET?.trim() ||
     (/^https?:\/\//i.test(fromBase) ? fromBase : "") ||
-    "http://192.168.3.204:8080";
+    "http://192.168.3.211:8083";
 
   return {
   server: {

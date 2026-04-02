@@ -1,24 +1,19 @@
 /**
- * Kagent (k8s-agent) HTTP client — sessions via Next.js RSC routes, chat via A2A JSON-RPC + SSE.
- * Configure VITE_KAGENT_* env vars; see vite-env.d.ts.
+ * Kagent (k8s-agent) HTTP client — 对接 kagent-controller 的 A2A JSON-RPC API.
+ * Configure VITE_KAGENT_BASE_URL env var; see vite-env.d.ts.
  */
 
 const KAGENT_NAMESPACE = "kagent";
 const KAGENT_AGENT_SLUG = "k8s-agent";
-const KAGENT_AGENT_REF = `${KAGENT_NAMESPACE}/${KAGENT_AGENT_SLUG}`;
 
-/** Matches the Referer / router state for the k8s-agent chat page in kagent UI */
-export const KAGENT_NEXT_ROUTER_STATE_TREE =
-  "%5B%22%22%2C%7B%22children%22%3A%5B%22agents%22%2C%7B%22children%22%3A%5B%5B%22namespace%22%2C%22kagent%22%2C%22d%22%5D%2C%7B%22children%22%3A%5B%5B%22name%22%2C%22k8s-agent%22%2C%22d%22%5D%2C%7B%22children%22%3A%5B%22chat%22%2C%7B%22children%22%3A%5B%22__PAGE__%22%2C%7B%7D%2Cnull%2Cnull%5D%7D%2Cnull%2Cnull%5D%7D%2Cnull%2Cnull%5D%7D%2Cnull%2Cnull%5D%7D%2Cnull%2Cnull%5D%7D%2Cnull%2Cnull%5D%7D%2Cnull%2Cnull%2Ctrue%5D";
+/** 获取 Agent Card API 路径 */
+function agentCardPath(): string {
+  return `/api/a2a/${KAGENT_NAMESPACE}/${KAGENT_AGENT_SLUG}/.well-known/agent.json`;
+}
 
-export interface KagentSessionRow {
-  id: string;
-  name: string;
-  user_id: string;
-  created_at: string;
-  updated_at: string;
-  deleted_at: string | null;
-  agent_id: string;
+/** A2A JSON-RPC API 路径 */
+function a2aPath(): string {
+  return `/api/a2a/${KAGENT_NAMESPACE}/${KAGENT_AGENT_SLUG}/`;
 }
 
 /**
@@ -48,96 +43,51 @@ export function isKagentConfigured(): boolean {
   return Boolean(getBaseUrl());
 }
 
-/** Next.js server action hash for "list sessions" — optional; omit to skip remote list */
-export function kagentHasListAction(): boolean {
-  return Boolean(import.meta.env.VITE_KAGENT_NEXT_ACTION_LIST?.trim());
-}
-
-/** Required for creating a remote Kagent session from this app */
-export function kagentHasCreateAction(): boolean {
-  return Boolean(import.meta.env.VITE_KAGENT_NEXT_ACTION_CREATE?.trim());
-}
-
 function kagentUserId(): string {
   return import.meta.env.VITE_KAGENT_USER_ID?.trim() || "admin@kagent.dev";
 }
 
-function chatPath(): string {
-  return `/agents/${KAGENT_NAMESPACE}/${KAGENT_AGENT_SLUG}/chat`;
-}
-
-function a2aPath(): string {
-  return `/a2a/${KAGENT_NAMESPACE}/${KAGENT_AGENT_SLUG}`;
-}
-
-function rscHeaders(nextAction: string): HeadersInit {
-  const raw = import.meta.env.VITE_KAGENT_BASE_URL?.trim() ?? "";
-  let origin = "";
-  try {
-    if (/^https?:\/\//i.test(raw)) origin = new URL(raw).origin;
-  } catch {
-    origin = "";
-  }
-  return {
-    Accept: "text/x-component",
-    "Content-Type": "text/plain;charset=UTF-8",
-    "next-action": nextAction,
-    "next-router-state-tree": KAGENT_NEXT_ROUTER_STATE_TREE,
-    ...(origin ? { Origin: origin, Referer: `${origin}${chatPath()}` } : {}),
+/** Agent Card 信息 */
+export interface KagentAgentCard {
+  name: string;
+  description: string;
+  url: string;
+  version: string;
+  capabilities: {
+    streaming: boolean;
+    pushNotifications: boolean;
+    stateTransitionHistory: boolean;
   };
+  defaultInputModes: string[];
+  defaultOutputModes: string[];
+  skills: {
+    id: string;
+    name: string;
+    description: string;
+    tags: string[];
+    examples: string[];
+  }[];
 }
 
-/** Parses multi-line RSC-style response: `0:{...}\n1:{...}` → object with `data` */
-function parseRscPayload<T>(text: string): { message?: string; data: T } {
-  const lines = text.trim().split(/\n/);
-  for (const line of lines) {
-    const colon = line.indexOf(":");
-    if (colon === -1) continue;
-    const jsonStr = line.slice(colon + 1);
-    try {
-      const obj = JSON.parse(jsonStr) as { message?: string; data?: T };
-      if (obj && typeof obj === "object" && "data" in obj && obj.data !== undefined) {
-        return obj as { message?: string; data: T };
-      }
-    } catch {
-      /* next line */
-    }
+/**
+ * 获取 Agent Card - 用于验证服务是否可用
+ */
+export async function fetchAgentCard(): Promise<KagentAgentCard> {
+  const base = getBaseUrl();
+  if (!base) throw new Error("未配置 VITE_KAGENT_BASE_URL");
+
+  const res = await fetch(`${base}${agentCardPath()}`, {
+    method: "GET",
+    headers: {
+      Accept: "application/json",
+    },
+  });
+
+  if (!res.ok) {
+    throw new Error(`获取 Agent Card 失败 (${res.status})`);
   }
-  throw new Error("无法解析 Kagent 会话接口响应");
-}
 
-export async function fetchKagentSessions(): Promise<KagentSessionRow[]> {
-  const base = getBaseUrl();
-  const action = import.meta.env.VITE_KAGENT_NEXT_ACTION_LIST?.trim();
-  if (!base || !action) throw new Error("缺少 VITE_KAGENT_NEXT_ACTION_LIST");
-
-  const res = await fetch(`${base}${chatPath()}`, {
-    method: "POST",
-    headers: rscHeaders(action),
-    body: JSON.stringify([KAGENT_NAMESPACE, KAGENT_AGENT_SLUG]),
-  });
-  if (!res.ok) throw new Error(`获取会话列表失败 (${res.status})`);
-  const text = await res.text();
-  const parsed = parseRscPayload<KagentSessionRow[]>(text);
-  return Array.isArray(parsed.data) ? parsed.data : [];
-}
-
-export async function createKagentSession(name: string): Promise<KagentSessionRow> {
-  const base = getBaseUrl();
-  const action = import.meta.env.VITE_KAGENT_NEXT_ACTION_CREATE?.trim();
-  if (!base || !action) throw new Error("缺少 VITE_KAGENT_NEXT_ACTION_CREATE");
-
-  const body = [{ user_id: kagentUserId(), agent_ref: KAGENT_AGENT_REF, name }];
-  const res = await fetch(`${base}${chatPath()}`, {
-    method: "POST",
-    headers: rscHeaders(action),
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) throw new Error(`创建会话失败 (${res.status})`);
-  const text = await res.text();
-  const parsed = parseRscPayload<KagentSessionRow>(text);
-  if (!parsed.data?.id) throw new Error("创建会话返回数据无效");
-  return parsed.data;
+  return res.json() as Promise<KagentAgentCard>;
 }
 
 export interface StreamKagentCallbacks {
@@ -145,16 +95,19 @@ export interface StreamKagentCallbacks {
   onError?: (err: Error) => void;
 }
 
+/** 从 A2A JSON-RPC 响应中提取 Agent 文本 */
 function extractAgentTextFromPayload(parsed: Record<string, unknown>): string | null {
   const result = parsed.result as Record<string, unknown> | undefined;
   if (!result) return null;
 
+  // 处理 artifact-update 类型
   if (result.kind === "artifact-update" && result.artifact) {
     const art = result.artifact as { parts?: { kind?: string; text?: string }[] };
     const t = art.parts?.map((p) => p.text).filter(Boolean).join("") ?? "";
     return t || null;
   }
 
+  // 处理 status-update 类型
   if (result.kind === "status-update" && result.status && typeof result.status === "object") {
     const st = result.status as {
       message?: { role?: string; parts?: { text?: string }[] };
@@ -166,6 +119,7 @@ function extractAgentTextFromPayload(parsed: Record<string, unknown>): string | 
   return null;
 }
 
+/** 判断流是否结束 */
 function isStreamFinished(parsed: Record<string, unknown>, eventName: string): boolean {
   const result = parsed.result as Record<string, unknown> | undefined;
   if (!result) return false;
@@ -183,6 +137,10 @@ function isStreamFinished(parsed: Record<string, unknown>, eventName: string): b
 
 /**
  * POST message/stream to A2A endpoint; parses SSE and surfaces agent text (streaming + final).
+ * @param contextId 会话 ID（以 "ctx-" 开头），新建会话时传入新的 UUID
+ * @param userText 用户消息
+ * @param cbs 回调函数
+ * @param signal AbortSignal
  */
 export async function streamKagentMessage(
   contextId: string,

@@ -52,14 +52,6 @@ spec:
           env:
             - name: VITE_KAGENT_BASE_URL
               value: {{ .Values.kagent.baseUrl | quote }}
-            {{- if .Values.kagent.nextActionList }}
-            - name: VITE_KAGENT_NEXT_ACTION_LIST
-              value: {{ .Values.kagent.nextActionList | quote }}
-            {{- end }}
-            {{- if .Values.kagent.nextActionCreate }}
-            - name: VITE_KAGENT_NEXT_ACTION_CREATE
-              value: {{ .Values.kagent.nextActionCreate | quote }}
-            {{- end }}
             {{- if .Values.kagent.userId }}
             - name: VITE_KAGENT_USER_ID
               value: {{ .Values.kagent.userId | quote }}

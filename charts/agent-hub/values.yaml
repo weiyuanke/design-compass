@@ -81,14 +81,10 @@ serviceAccount:
   annotations: {}
   name: ""
 
-# Kagent (k8s-agent) 配置
+# Kagent (k8s-agent) 配置 - 对接 kagent-controller
 kagent:
   enabled: false
-  # Kagent 服务根 URL，如 http://192.168.3.204:8080
+  # Kagent Controller 服务根 URL，如 http://192.168.3.211:8083
   baseUrl: ""
-  # Next.js server action 哈希（获取会话列表）
-  nextActionList: ""
-  # Next.js server action 哈希（创建会话）
-  nextActionCreate: ""
   # 默认用户 ID
   userId: "admin@kagent.dev"
