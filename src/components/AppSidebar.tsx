@@ -120,7 +120,7 @@ export function AppSidebar() {
           </div>
           {!collapsed && (
             <span className="text-lg font-semibold text-gradient-primary tracking-tight">
-              Lingjun Agent Hub
+              yunban Agent Hub
             </span>
           )}
         </div>
