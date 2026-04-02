@@ -116,6 +116,8 @@ export interface StreamKagentCallbacks {
   onTaskUpdate?: (message: string, kind?: string) => void;
   /** task_status_update 事件（包含状态详情） */
   onTaskStatusUpdate?: (status: string, state?: string, final?: boolean) => void;
+  /** MCP 工具调用状态 */
+  onToolCall?: (toolCall: { name: string; args?: Record<string, unknown>; status: "start" | "running" | "complete" | "error"; result?: string; error?: string }) => void;
   onError?: (err: Error) => void;
 }
 
@@ -186,6 +188,79 @@ function extractTaskMessage(parsed: Record<string, unknown>): { message: string;
     const msg = parts.map((p) => p.text).filter(Boolean).join("");
     if (msg) {
       return { message: msg, kind: result.kind as string };
+    }
+  }
+
+  return null;
+}
+
+/** 从响应中提取 MCP 工具调用信息 
+ * 
+ * 根据实际 API 数据格式，工具调用信息在 task_status_update 事件中：
+ * 1. 工具调用开始：parts 中有 kind: "data", metadata.kagent_type: "function_call"
+ * 2. 工具调用完成：parts 中有 kind: "data", metadata.kagent_type: "function_response"
+ */
+function extractToolCallFromPayload(parsed: Record<string, unknown>): { 
+  name: string; 
+  args?: Record<string, unknown>; 
+  status: "start" | "running" | "complete" | "error";
+  result?: string;
+  error?: string;
+} | null {
+  const result = parsed.result as Record<string, unknown> | undefined;
+  if (!result) return null;
+
+  // 处理 status-update 类型中的工具调用（根据实际 API 格式）
+  if (result.kind === "status-update" && result.status && typeof result.status === "object") {
+    const st = result.status as {
+      state?: string;
+      message?: { 
+        role?: string; 
+        parts?: { 
+          kind?: string; 
+          text?: string;
+          data?: {
+            name?: string;
+            args?: Record<string, unknown>;
+            id?: string;
+            response?: {
+              content?: { text?: string; type?: string }[];
+              isError?: boolean;
+            };
+          };
+          metadata?: { kagent_type?: string };
+        }[];
+      };
+    };
+    
+    // 查找工具调用部分（kind: "data"）
+    const dataPart = st.message?.parts?.find((p) => p.kind === "data");
+    if (dataPart?.data) {
+      const toolData = dataPart.data;
+      const metadata = dataPart.metadata;
+      
+      // function_call - 工具开始调用
+      if (metadata?.kagent_type === "function_call" && toolData.name) {
+        return {
+          name: toolData.name,
+          args: toolData.args,
+          status: "running",
+        };
+      }
+      
+      // function_response - 工具调用完成
+      if (metadata?.kagent_type === "function_response" && toolData.name) {
+        const isError = toolData.response?.isError;
+        const resultText = toolData.response?.content?.[0]?.text;
+        
+        return {
+          name: toolData.name,
+          args: toolData.args,
+          status: isError ? "error" : "complete",
+          result: isError ? undefined : resultText,
+          error: isError ? resultText : undefined,
+        };
+      }
     }
   }
 
@@ -303,7 +378,19 @@ export async function streamKagentMessage(
         const text = extractAgentTextFromPayload(parsed);
         const statusInfo = extractStatusFromPayload(parsed);
         const taskMsg = extractTaskMessage(parsed);
+        const toolCall = extractToolCallFromPayload(parsed);
         const streamDone = isStreamFinished(parsed, eventName);
+
+        // 调试：打印原始数据到控制台（开发环境）
+        if (import.meta.env.DEV) {
+          // eslint-disable-next-line no-console
+          console.log("[Kagent SSE] event:", eventName, "data:", parsed);
+        }
+
+        // 触发 MCP 工具调用回调
+        if (toolCall) {
+          cbs.onToolCall?.(toolCall);
+        }
 
         // 触发状态更新回调
         if (statusInfo && (statusInfo.status || statusInfo.state)) {

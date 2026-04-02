@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Send, Paperclip, Bot, User, Plus, ChevronDown, MessageSquare, Sparkles, Zap, Shield, TrendingUp, Brain, Globe, Mic, ArrowUp, Hash, ImageIcon } from "lucide-react";
+import { Send, Paperclip, Bot, User, Plus, ChevronDown, MessageSquare, Sparkles, Zap, Shield, TrendingUp, Brain, Globe, Mic, ArrowUp, Hash, ImageIcon, Wrench, CheckCircle2, XCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
@@ -26,6 +26,20 @@ interface Message {
   role: "user" | "agent";
   content: string;
   timestamp: string;
+  /** 流式响应状态 */
+  streamingStatus?: {
+    state?: string;
+    message?: string;
+    isFinal?: boolean;
+  };
+  /** MCP 工具调用状态 */
+  toolCalls?: {
+    name: string;
+    args?: Record<string, unknown>;
+    status: "start" | "running" | "complete" | "error";
+    result?: string;
+    error?: string;
+  }[];
 }
 
 interface Session {
@@ -102,6 +116,18 @@ const ChatPage = () => {
   const [input, setInput] = useState("");
   const [isRouting, setIsRouting] = useState(false);
   const [kagentBootstrapping, setKagentBootstrapping] = useState(false);
+  const [streamingState, setStreamingState] = useState<{
+    state?: string;
+    message?: string;
+    isFinal?: boolean;
+  } | null>(null);
+  const [activeToolCalls, setActiveToolCalls] = useState<{
+    name: string;
+    args?: Record<string, unknown>;
+    status: "start" | "running" | "complete" | "error";
+    result?: string;
+    error?: string;
+  }[]>([]);
   const streamAbortRef = useRef<AbortController | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useAutoResize(input);
@@ -250,6 +276,9 @@ const ChatPage = () => {
         )
       );
 
+      // 重置流式状态
+      setStreamingState({ state: "submitted", message: "正在提交任务..." });
+
       await streamKagentMessage(
         sid,
         content,
@@ -261,7 +290,9 @@ const ChatPage = () => {
                 return {
                   ...s,
                   messages: s.messages.map((m) =>
-                    m.id === agentMsgId ? { ...m, content: t || m.content } : m
+                    m.id === agentMsgId 
+                      ? { ...m, content: t || m.content, streamingStatus: undefined } 
+                      : m
                   ),
                   updatedAt: new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" }),
                 };
@@ -269,9 +300,10 @@ const ChatPage = () => {
             );
           },
           onStatusUpdate: (status, state) => {
-            // 状态提示：显示在消息内容之前或更新占位符
+            // 更新流式状态，显示在消息上方
             const statusText = status || getStateDisplayText(state);
-            if (statusText) {
+            if (statusText || state) {
+              setStreamingState({ state, message: statusText });
               setSessions((prev) =>
                 prev.map((s) => {
                   if (s.id !== sid) return s;
@@ -279,7 +311,7 @@ const ChatPage = () => {
                     ...s,
                     messages: s.messages.map((m) =>
                       m.id === agentMsgId
-                        ? { ...m, content: `⏳ ${statusText}\n\n${m.content}` }
+                        ? { ...m, streamingStatus: { state, message: statusText } }
                         : m
                     ),
                   };
@@ -288,27 +320,16 @@ const ChatPage = () => {
             }
           },
           onTaskUpdate: (message, kind) => {
-            // 任务事件：显示在消息内容之前
+            // 任务事件：更新流式状态
             if (message) {
-              setSessions((prev) =>
-                prev.map((s) => {
-                  if (s.id !== sid) return s;
-                  return {
-                    ...s,
-                    messages: s.messages.map((m) =>
-                      m.id === agentMsgId
-                        ? { ...m, content: `🔄 ${message}\n\n${m.content}` }
-                        : m
-                    ),
-                  };
-                })
-              );
+              setStreamingState((prev) => ({ ...prev, message }));
             }
           },
           onTaskStatusUpdate: (status, state, isFinal) => {
-            // task_status_update 事件：显示在消息内容之前
+            // task_status_update 事件：更新流式状态
             const statusText = status || getStateDisplayText(state);
-            if (statusText) {
+            if (statusText || state) {
+              setStreamingState({ state, message: statusText, isFinal });
               setSessions((prev) =>
                 prev.map((s) => {
                   if (s.id !== sid) return s;
@@ -316,23 +337,68 @@ const ChatPage = () => {
                     ...s,
                     messages: s.messages.map((m) =>
                       m.id === agentMsgId
-                        ? { ...m, content: `📋 ${statusText}\n\n${m.content}` }
+                        ? { ...m, streamingStatus: { state, message: statusText, isFinal } }
                         : m
                     ),
                   };
                 })
               );
             }
+            if (isFinal) {
+              setStreamingState(null);
+              setActiveToolCalls([]);
+            }
+          },
+          onToolCall: (toolCall) => {
+            // MCP 工具调用状态更新
+            setActiveToolCalls((prev) => {
+              const existing = prev.findIndex((t) => t.name === toolCall.name);
+              if (existing >= 0) {
+                // 更新现有工具状态
+                const updated = [...prev];
+                updated[existing] = { ...updated[existing], ...toolCall };
+                return updated;
+              }
+              // 添加新工具
+              return [...prev, toolCall];
+            });
+            
+            // 同时更新消息中的工具调用状态
+            setSessions((prev) =>
+              prev.map((s) => {
+                if (s.id !== sid) return s;
+                return {
+                  ...s,
+                  messages: s.messages.map((m) => {
+                    if (m.id !== agentMsgId) return m;
+                    const existingTools = m.toolCalls || [];
+                    const existingIndex = existingTools.findIndex((t) => t.name === toolCall.name);
+                    let updatedTools;
+                    if (existingIndex >= 0) {
+                      updatedTools = [...existingTools];
+                      updatedTools[existingIndex] = { ...updatedTools[existingIndex], ...toolCall };
+                    } else {
+                      updatedTools = [...existingTools, toolCall];
+                    }
+                    return { ...m, toolCalls: updatedTools };
+                  }),
+                };
+              })
+            );
           },
           onError: (err) => {
             toast.error(err.message);
+            setStreamingState(null);
+            setActiveToolCalls([]);
             setSessions((prev) =>
               prev.map((s) => {
                 if (s.id !== sid) return s;
                 return {
                   ...s,
                   messages: s.messages.map((m) =>
-                    m.id === agentMsgId ? { ...m, content: `请求失败：${err.message}` } : m
+                    m.id === agentMsgId 
+                      ? { ...m, content: `请求失败：${err.message}`, streamingStatus: undefined, toolCalls: undefined } 
+                      : m
                   ),
                 };
               })
@@ -341,6 +407,9 @@ const ChatPage = () => {
         },
         ac.signal
       );
+      // 流式结束后清除状态
+      setStreamingState(null);
+      setActiveToolCalls([]);
       return;
     }
 
@@ -672,6 +741,73 @@ const ChatPage = () => {
                     {msg.role === "user" ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
                   </div>
                   <div className={`max-w-[95%] space-y-1 ${msg.role === "user" ? "items-end" : ""}`}>
+                    {/* 流式状态指示器 */}
+                    {msg.streamingStatus && (
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
+                        <motion.span
+                          animate={{ opacity: [1, 0.5, 1] }}
+                          transition={{ duration: 1.5, repeat: Infinity }}
+                          className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full bg-primary/10 text-primary"
+                        >
+                          <span className="relative flex h-2 w-2">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+                          </span>
+                          {msg.streamingStatus.message || getStateDisplayText(msg.streamingStatus.state) || "处理中..."}
+                        </motion.span>
+                      </div>
+                    )}
+                    {/* MCP 工具调用状态 */}
+                    {msg.toolCalls && msg.toolCalls.length > 0 && (
+                      <div className="flex flex-col gap-2 mb-2">
+                        {msg.toolCalls.map((tool, idx) => (
+                          <motion.div
+                            key={`${tool.name}-${idx}`}
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            className={`flex flex-col gap-1 px-3 py-2 rounded-lg text-xs border ${
+                              tool.status === "error" 
+                                ? "bg-red-500/10 border-red-500/20 text-red-600" 
+                                : tool.status === "complete"
+                                ? "bg-green-500/10 border-green-500/20 text-green-600"
+                                : "bg-amber-500/10 border-amber-500/20 text-amber-600"
+                            }`}
+                          >
+                            <div className="flex items-center gap-2">
+                              {tool.status === "running" || tool.status === "start" ? (
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                              ) : tool.status === "complete" ? (
+                                <CheckCircle2 className="h-3 w-3" />
+                              ) : tool.status === "error" ? (
+                                <XCircle className="h-3 w-3" />
+                              ) : (
+                                <Wrench className="h-3 w-3" />
+                              )}
+                              <span className="font-medium">{tool.name}</span>
+                              {tool.status === "running" && (
+                                <span className="text-amber-600/70">执行中...</span>
+                              )}
+                              {tool.status === "complete" && (
+                                <span className="text-green-600/70">已完成</span>
+                              )}
+                              {tool.status === "error" && (
+                                <span className="text-red-600/70">失败</span>
+                              )}
+                            </div>
+                            {/* 显示工具参数 */}
+                            {tool.args && Object.keys(tool.args).length > 0 && (
+                              <div className="mt-1 pl-5 text-[10px] opacity-80 font-mono">
+                                {Object.entries(tool.args).map(([key, value]) => (
+                                  <span key={key} className="mr-2">
+                                    {key}: {String(value)}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </motion.div>
+                        ))}
+                      </div>
+                    )}
                     <div className={`rounded-2xl px-4 py-3 text-sm leading-relaxed ${
                       msg.role === "user" ? "bg-primary text-primary-foreground rounded-tr-md" : "bg-secondary/60 text-foreground rounded-tl-md"
                     }`}>
