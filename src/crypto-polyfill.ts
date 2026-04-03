@@ -13,4 +13,12 @@ if (typeof crypto !== "undefined" && !crypto.randomUUID) {
   };
 }
 
+// Polyfill for Object.hasOwn (ES2022)
+// Required for browsers that don't support Object.hasOwn natively (e.g., some Edge versions)
+if (!Object.hasOwn) {
+  Object.hasOwn = function <T extends object>(obj: T, prop: keyof T): boolean {
+    return Object.prototype.hasOwnProperty.call(obj, prop);
+  };
+}
+
 export {};

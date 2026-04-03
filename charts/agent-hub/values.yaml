@@ -3,7 +3,7 @@
 # 镜像配置
 image:
   repository: docker.io/weiyuanke/agent-hub
-  tag: "0.8.1"
+  tag: "0.8.2"
   pullPolicy: IfNotPresent
 
 # Kagent API 配置
