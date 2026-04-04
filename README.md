@@ -2,6 +2,9 @@
 
 一个企业级 AI Agent 管理平台，提供完整的 Agent 生命周期管理、多 Agent 协作、知识库 RAG、MCP 集成等功能。
 
+<img width="1680" height="926" alt="image" src="https://github.com/user-attachments/assets/8c9ff9c3-3940-42a8-b8f9-62c7ed8d7649" />
+
+
 ## 🎯 核心功能
 
 ### Agent 管理
